@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "293689309038",
+    "project_id": "musicboxd-e0c37",
+    "storage_bucket": "musicboxd-e0c37.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:293689309038:android:0677a6230f358fa5fef37f",
+        "android_client_info": {
+          "package_name": "com.example.musicboxd"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "293689309038-95bjei5akvif8qpi20deud9qsthih1me.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.musicboxd",
+            "certificate_hash": "aa8180b75ba2b7f64f8e5805367f1398a9e4e22d"
+          }
+        },
+        {
+          "client_id": "293689309038-ujing4it18idlrjreakgpgn5cot919v2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA3bdSxMhrUh8DxOTzPzPV-wP_aYGlKd5Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "293689309038-ujing4it18idlrjreakgpgn5cot919v2.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "293689309038-7qaovrsgopmmrnb54vi7jegir7j22hu1.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.musicboxdFlutter"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
