@@ -11,9 +11,29 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateMixin {
   late TabController _tabController;
+  Color _indicatorColor = Colors.deepPurple; // Colore iniziale
   String username = '...';
   List<String> currentItems = [];
   bool showList = false;
+
+  void _handleTabSelection() {
+    setState(() {
+      switch (_tabController.index) {
+        case 0:
+          _indicatorColor = Colors.deepPurple; // home
+          break;
+        case 1:
+          _indicatorColor = Colors.purpleAccent; // add
+          break;
+        case 2:
+          _indicatorColor = Colors.teal; // teal_200
+          break;
+        case 3:
+          _indicatorColor = Colors.tealAccent; // profile
+          break;
+      }
+    });
+  }
 
   final List<Tab> myTabs = const [
     Tab(text: 'Profile'),
@@ -25,9 +45,9 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: myTabs.length, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(_handleTabSelection);
     _fetchUsername();
-
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) return;
       setState(() {
@@ -91,9 +111,8 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
             const SizedBox(height: 20),
             TabBar(
               controller: _tabController,
-              labelColor: Colors.white,
+              indicatorColor: _indicatorColor,
               unselectedLabelColor: Colors.grey,
-              indicatorColor: _getTabIndicatorColor(_tabController.index),
               tabs: myTabs,
             ),
             const SizedBox(height: 6),
@@ -116,15 +135,20 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
                 color: scrollViewColor,
                 padding: const EdgeInsets.only(bottom: 30),
                 child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      _clickableItem('Music'),
-                      _clickableItem('Reviews'),
-                      _clickableItem('Playlist', routeName: '/playlist'),
-                      _clickableItem('Likes'),
-                      _clickableItem('Followers and Following', routeName: '/network'),
-                      _clickableItem('Settings', bold: true, routeName: '/settings'),
-                    ],
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _clickableItem('Music'),
+                        _clickableItem('Reviews'),
+                        _clickableItem('Playlist', routeName: '/playlist'),
+                        _clickableItem('Likes'),
+                        _clickableItem('Followers and Following', routeName: '/network'),
+                        _clickableItem('Settings', bold: true, routeName: '/settings'),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -133,21 +157,6 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
         ),
       ),
     );
-  }
-
-  Color _getTabIndicatorColor(int index) {
-    switch (index) {
-      case 0:
-        return const Color(0xFF00C853); // R.color.home
-      case 1:
-        return const Color(0xFFFF4081); // R.color.add
-      case 2:
-        return Colors.tealAccent; // R.color.teal_200
-      case 3:
-        return const Color(0xFF536DFE); // R.color.profile
-      default:
-        return Colors.white;
-    }
   }
 
   Widget _clickableItem(String text, {bool bold = false, String? routeName}) {

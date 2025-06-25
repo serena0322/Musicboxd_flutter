@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -61,6 +62,9 @@ class _LoginScreenState extends State<LoginScreen> {
           case 'invalid-email':
             _errorMessage = 'Email non valida';
             break;
+          case 'invalid-credential':
+            _errorMessage = 'Credenziali non valide o scadute';
+            break;
           default:
             _errorMessage = 'Errore: ${e.message}';
         }
@@ -100,7 +104,40 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Login')),
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ShaderMask(
+              shaderCallback: (Rect bounds) {
+                return const LinearGradient(
+                  colors: [Colors.purple, Colors.tealAccent],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  stops: [0.0, 0.6],
+                ).createShader(bounds);
+              },
+              blendMode: BlendMode.srcIn,
+              child: const Text(
+                'Musicboxd',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white, // necessario per attivare il ShaderMask
+                ),
+              ),
+            ),
+            const Text(
+              'Login',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.white70,
+              ),
+            ),
+          ],
+        ),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(

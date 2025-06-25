@@ -9,7 +9,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  Color _indicatorColor = Colors.blue; // Colore iniziale
+  Color _indicatorColor = Colors.deepPurple; // Colore iniziale
 
   @override
   void initState() {
@@ -22,16 +22,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     setState(() {
       switch (_tabController.index) {
         case 0:
-          _indicatorColor = Colors.blue; // home
+          _indicatorColor = Colors.deepPurple; // home
           break;
         case 1:
-          _indicatorColor = Colors.orange; // add
+          _indicatorColor = Colors.purpleAccent; // add
           break;
         case 2:
           _indicatorColor = Colors.teal; // teal_200
           break;
         case 3:
-          _indicatorColor = Colors.purple; // profile
+          _indicatorColor = Colors.tealAccent; // profile
           break;
       }
     });
@@ -44,7 +44,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         title: ShaderMask(
           shaderCallback: (Rect bounds) {
             return const LinearGradient(
-              colors: [Colors.blue, Colors.teal],
+              colors: [Colors.purple, Colors.tealAccent],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
               stops: [0.0, 0.6],
@@ -52,7 +52,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           },
           blendMode: BlendMode.srcIn,
           child: const Text(
-            'Titolo',
+            'Musicboxd',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,

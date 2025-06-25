@@ -62,6 +62,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '293689309038',
     projectId: 'musicboxd-e0c37',
     storageBucket: 'musicboxd-e0c37.firebasestorage.app',
+    androidClientId: '293689309038-95bjei5akvif8qpi20deud9qsthih1me.apps.googleusercontent.com',
+    iosClientId: '293689309038-7qaovrsgopmmrnb54vi7jegir7j22hu1.apps.googleusercontent.com',
     iosBundleId: 'com.example.musicboxdFlutter',
   );
 
@@ -71,6 +73,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '293689309038',
     projectId: 'musicboxd-e0c37',
     storageBucket: 'musicboxd-e0c37.firebasestorage.app',
+    androidClientId: '293689309038-95bjei5akvif8qpi20deud9qsthih1me.apps.googleusercontent.com',
+    iosClientId: '293689309038-7qaovrsgopmmrnb54vi7jegir7j22hu1.apps.googleusercontent.com',
     iosBundleId: 'com.example.musicboxdFlutter',
   );
 

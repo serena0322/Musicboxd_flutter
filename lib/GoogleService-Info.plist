@@ -26,5 +26,20 @@
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
 	<string>1:293689309038:ios:7932001c5bdaed24fef37f</string>
+    <key>CFBundleURLTypes</key>
+    <array>
+      <dict>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <string>fbAPP-ID</string>
+      </array>
+      </dict>
+    </array>
+    <key>FacebookAppID</key>
+    <string>APP-ID</string>
+    <key>FacebookClientToken</key>
+    <string>CLIENT-TOKEN</string>
+    <key>FacebookDisplayName</key>
+    <string>APP-NAME</string>
 </dict>
 </plist>

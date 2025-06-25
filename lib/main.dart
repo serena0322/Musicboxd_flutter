@@ -15,16 +15,14 @@ import 'Screens/SettingsScreen.dart';
 import 'Screens/SplashScreen.dart';
 import 'firebase_options.dart';
 
-
-//
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  testFirestoreConnection(); // solo per attivare Firestore
   runApp(MyApp());
 }
+
 
 //verifica file trovati su Firestore
 void testFirestoreConnection() async {
@@ -59,6 +57,7 @@ class MyApp extends StatelessWidget {
         },
       ),
       routes: {
+        '/login': (context) => const LoginScreen(),
         '/settings': (context) => const SettingsScreen(),
         '/network': (context) => NetworkScreen(),
         '/playlist': (context) => const PlaylistScreen(),
@@ -102,16 +101,47 @@ class _MainPageState extends State<MainPage> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.grey,
+        type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.black,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Cerca'),
-          BottomNavigationBarItem(icon: Icon(Icons.add_box), label: 'Aggiungi'),
-          BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Attività'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profilo'),
-        ],
+        items: List.generate(5, (index) {
+          final isSelected = _currentIndex == index;
+
+          final List<IconData> icons = [
+            Icons.home,
+            Icons.search,
+            Icons.add_box,
+            Icons.favorite,
+            Icons.person,
+          ];
+
+          final List<String> labels = [
+            'Home',
+            'Cerca',
+            'Aggiungi',
+            'Attività',
+            'Profilo',
+          ];
+
+          final List<Color> activeColors = [
+            Colors.purple,
+            Colors.purpleAccent,
+            Colors.pinkAccent,
+            Colors.teal,
+            Colors.tealAccent,
+          ];
+
+          return BottomNavigationBarItem(
+            icon: Icon(
+              icons[index],
+              color: isSelected ? activeColors[index] : Colors.grey,
+            ),
+            label: labels[index],
+          );
+        }),
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
+        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal),
+        selectedItemColor: Colors.transparent, // ignorato, ma necessario per evitare override
+        unselectedItemColor: Colors.grey,
       ),
     );
   }

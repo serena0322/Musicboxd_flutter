@@ -10,8 +10,8 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth auth = FirebaseAuth.instance;
+  final FirebaseFirestore firestore = FirebaseFirestore.instance;
 
   late User _currentUser;
   DocumentReference<Map<String, dynamic>>? _userDocRef;
@@ -30,8 +30,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _initializeUserData() async {
-    _currentUser = _auth.currentUser!;
-    _userDocRef = _firestore.collection('User').doc(_currentUser.uid);
+    _currentUser = auth.currentUser!;
+    _userDocRef = firestore.collection('User').doc(_currentUser.uid);
 
     try {
       final docSnapshot = await _userDocRef!.get();
@@ -55,7 +55,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _updateField(String fieldName, String currentValue, String dialogTitle, String hint) async {
+  Future<void> _updateData(String fieldName, String currentValue, String dialogTitle, String hint) async {
     final controller = TextEditingController(text: currentValue);
 
     final result = await showDialog<String>(
@@ -123,9 +123,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
     if (confirm == true) {
-      await _auth.signOut();
-      if (!mounted) return;
-      Navigator.of(context).pushReplacementNamed('/login'); // Cambia con la route di login
+      await auth.signOut();
+      Navigator.of(context).pushNamed('/login');
     }
   }
 
@@ -153,7 +152,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Account eliminato con successo')),
         );
-        Navigator.of(context).pushReplacementNamed('/login'); // Cambia con la route di login
+        Navigator.of(context).pushReplacementNamed('/login');
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Errore durante l'eliminazione: $e")),
@@ -184,7 +183,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             _buildClickableText(
               label: 'Signed in as $_username',
-              onTap: () => _updateField('username', _username, 'Username', 'Inserisci username'),
+              onTap: () => _updateData('username', _username, 'Username', 'Inserisci username'),
               textColor: Colors.grey,
               fontSize: 20,
             ),
@@ -203,12 +202,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 16),
             _buildClickableText(
               label: 'First name: $_firstName',
-              onTap: () => _updateField('firstName', _firstName, 'Nome', 'Inserisci nome'),
+              onTap: () => _updateData('firstName', _firstName, 'Nome', 'Inserisci nome'),
             ),
             const SizedBox(height: 16),
             _buildClickableText(
               label: 'Last name: $_lastName',
-              onTap: () => _updateField('lastName', _lastName, 'Cognome', 'Inserisci cognome'),
+              onTap: () => _updateData('lastName', _lastName, 'Cognome', 'Inserisci cognome'),
             ),
             const SizedBox(height: 16),
             _buildClickableText(
