@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class UserModel {
+class AppUser {
   final String id;
   final String username;
   final String email;
@@ -10,7 +10,7 @@ class UserModel {
   final int following;
   final Timestamp createdAt;
 
-  const UserModel({
+  const AppUser({
     required this.id,
     required this.username,
     required this.email,
@@ -22,10 +22,10 @@ class UserModel {
   });
 
   // Factory constructor to create an instance from Firestore document
-  factory UserModel.fromDocument(DocumentSnapshot doc) {
+  factory AppUser.fromDocument(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
 
-    return UserModel(
+    return AppUser(
       id: doc.id,
       username: data['username'] ?? '',
       email: data['email'] ?? '',

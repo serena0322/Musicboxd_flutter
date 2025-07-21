@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'package:flutter/material.dart';
 
-import '../Classes/User.dart';
+import '../Classes/AppUser.dart';
 
 class NetworkScreen extends StatefulWidget {
   @override
@@ -14,7 +14,7 @@ class _NetworkScreenState extends State<NetworkScreen>
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
 
-  List<UserModel> _users = [];
+  List<AppUser> _users = [];
   bool _isLoading = false;
 
   @override
@@ -78,7 +78,7 @@ class _NetworkScreenState extends State<NetworkScreen>
 
         setState(() {
           _users = usersQuery.docs
-              .map((doc) => UserModel.fromDocument(doc))
+              .map((doc) => AppUser.fromDocument(doc))
               .toList();
         });
       } else if (index == 2) {
@@ -106,7 +106,7 @@ class _NetworkScreenState extends State<NetworkScreen>
 
         setState(() {
           _users = usersQuery.docs
-              .map((doc) => UserModel.fromDocument(doc))
+              .map((doc) => AppUser.fromDocument(doc))
               .toList();
         });
       }
@@ -141,7 +141,7 @@ class _NetworkScreenState extends State<NetworkScreen>
 
       setState(() {
         _users =
-            snapshot.docs.map((doc) => UserModel.fromDocument(doc)).toList();
+            snapshot.docs.map((doc) => AppUser.fromDocument(doc)).toList();
       });
     } catch (e) {
       print("Errore ricerca utenti: $e");
@@ -152,7 +152,7 @@ class _NetworkScreenState extends State<NetworkScreen>
     }
   }
 
-  void _onUserTap(UserModel user) {
+  void _onUserTap(AppUser user) {
     // Navigazione al profilo utente, passare user.id
     Navigator.of(context).pushNamed('/userProfile', arguments: user.id);
   }

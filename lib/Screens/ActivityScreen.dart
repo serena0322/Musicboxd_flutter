@@ -2,7 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import '../Classes/ActivityItem.dart';
+import '../local/ActivityItem.dart';
+import '../repositories/UserRepository.dart';
+
+// Assicurati che RawActivity sia definita nel progetto
+class RawActivity {
+  final String actionType;
+  final String sourceUserId;
+  final String? targetUserId;
+  final Timestamp timestamp;
+
+  RawActivity({
+    required this.actionType,
+    required this.sourceUserId,
+    required this.targetUserId,
+    required this.timestamp,
+  });
+}
 
 class ActivityScreen extends StatefulWidget {
   @override
@@ -18,7 +34,11 @@ class _ActivityScreenState extends State<ActivityScreen> with SingleTickerProvid
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(_loadActivities);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        _loadActivities();
+      }
+    });
     _loadActivities();
   }
 
@@ -26,11 +46,11 @@ class _ActivityScreenState extends State<ActivityScreen> with SingleTickerProvid
     if (_tabController.index == 0) {
       _loadFriendsActivities();
     } else {
-      _loadUserActivities();
+      _loadMyActivities();
     }
   }
 
-  Future<void> _loadUserActivities() async {
+  Future<void> _loadMyActivities() async {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
 
@@ -67,7 +87,9 @@ class _ActivityScreenState extends State<ActivityScreen> with SingleTickerProvid
         .collection('followingList')
         .get();
 
-    if (followingSnapshot.docs.isEmpty) {
+    final followingIds = followingSnapshot.docs.map((doc) => doc.id).toList();
+
+    if (followingIds.isEmpty) {
       setState(() {
         _activities = [];
         _isLoading = false;
@@ -75,82 +97,15 @@ class _ActivityScreenState extends State<ActivityScreen> with SingleTickerProvid
       return;
     }
 
-    final rawActivities = <RawActivity>[];
-    final futures = followingSnapshot.docs.map((doc) async {
-      final followedId = doc.id;
-      if (followedId == currentUser.uid) return;
-
-      final snapshot = await FirebaseFirestore.instance
-          .collection('User')
-          .doc(followedId)
-          .collection('ActivityForOthers')
-          .orderBy('timestamp', descending: true)
-          .limit(10)
-          .get();
-
-      for (var doc in snapshot.docs) {
-        final actionType = doc['actionType'];
-        final sourceUserId = doc['sourceUserId'];
-        final targetUserId = doc['targetUserId'];
-        final timestamp = doc['timestamp'] as Timestamp;
-
-        if (sourceUserId == currentUser.uid) continue;
-
-        rawActivities.add(RawActivity(
-          actionType: actionType,
-          sourceUserId: sourceUserId,
-          targetUserId: targetUserId,
-          timestamp: timestamp,
-        ));
-      }
-    }).toList();
-
-    await Future.wait(futures);
-
-    // Recupera tutti gli username
-    final userIds = rawActivities
-        .expand((a) => [a.sourceUserId, if (a.targetUserId != null) a.targetUserId!])
-        .toSet();
-
-    final usernames = <String, String>{};
-    await Future.wait(userIds.map((id) async {
-      final doc = await FirebaseFirestore.instance.collection('User').doc(id).get();
-      if (doc.exists) {
-        usernames[id] = doc['username'] ?? 'Utente';
-      }
-    }));
-
-    final activities = rawActivities.map((activity) {
-      final sourceUsername = usernames[activity.sourceUserId] ?? 'Utente';
-      final targetUsername = usernames[activity.targetUserId] ?? 'qualcuno';
-      final isTargetCurrentUser = activity.targetUserId == currentUser.uid;
-
-      String message;
-      switch (activity.actionType) {
-        case 'follow':
-          message = isTargetCurrentUser
-              ? "$sourceUsername ha iniziato a seguirti"
-              : "$sourceUsername ha iniziato a seguire $targetUsername";
-          break;
-        case 'unfollow':
-          message = isTargetCurrentUser
-              ? "$sourceUsername ha smesso di seguirti"
-              : "$sourceUsername ha smesso di seguire $targetUsername";
-          break;
-        default:
-          message = "$sourceUsername ha effettuato un'azione";
-      }
-
-      return ActivityItem(message: message, timestamp: activity.timestamp);
-    }).toList();
-
-    activities.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    final userRepository = UserRepository();
+    final activities = await userRepository.loadFriendsActivities(followingIds);
 
     setState(() {
       _activities = activities;
       _isLoading = false;
     });
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -184,6 +139,13 @@ class _ActivityScreenState extends State<ActivityScreen> with SingleTickerProvid
             Expanded(
               child: _isLoading
                   ? Center(child: CircularProgressIndicator())
+                  : _activities.isEmpty
+                  ? Center(
+                child: Text(
+                  "Nessuna attività trovata",
+                  style: TextStyle(color: Colors.grey),
+                ),
+              )
                   : ListView.builder(
                 itemCount: _activities.length,
                 itemBuilder: (context, index) {

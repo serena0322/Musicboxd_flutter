@@ -2,9 +2,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-
+import 'package:musicboxd_flutter/repositories/UserRepository.dart';
 import 'Screens/ActivityScreen.dart';
-import 'Screens/AddScreen.dart';
+import 'Screens/AddSongBottomSheet.dart';
 import 'Screens/HomeScreen.dart';
 import 'Screens/LoginScreen.dart';
 import 'Screens/NetworkScreen.dart';
@@ -22,7 +22,6 @@ void main() async {
   );
   runApp(MyApp());
 }
-
 
 //verifica file trovati su Firestore
 void testFirestoreConnection() async {
@@ -77,11 +76,12 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   int _currentIndex = 0;
+  final UserRepository _userRepository = UserRepository();
 
   final List<Widget> _screens = [
     const HomeScreen(),
     const SearchScreen(),
-    const AddScreen(),
+    const AddSongBottomSheet(),
     ActivityScreen(),
     const ProfileScreen(),
   ];
@@ -89,9 +89,20 @@ class _MainPageState extends State<MainPage> {
   @override
   void initState() {
     super.initState();
+
+    _loadUserData();
+
     const destinations = ['home', 'search', 'add', 'activity', 'profile'];
     final index = destinations.indexOf(widget.destination ?? 'home');
     _currentIndex = index != -1 ? index : 0;
+  }
+
+  Future<void> _loadUserData() async {
+    final user = await _userRepository.loadMyBasicData();
+    if (user != null) {
+      print('Utente caricato: ${user.username}');
+      // esempio: UserViewModel().setUser(user);
+    }
   }
 
   @override
