@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../local/ActivityItem.dart';
+import '../Classes/ActivityItem.dart';
 
 class ActivityAdapter extends StatelessWidget {
   final List<ActivityItem> items;

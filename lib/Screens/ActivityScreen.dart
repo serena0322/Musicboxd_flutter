@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import '../local/ActivityItem.dart';
+import '../Classes/ActivityItem.dart';
 import '../repositories/UserRepository.dart';
 
 // Assicurati che RawActivity sia definita nel progetto

@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../local/ActivityItem.dart';
+import '../Classes/ActivityItem.dart';
 import '../repositories/UserRepository.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
