@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Track {
   final int id;
   final String title;
@@ -22,4 +24,17 @@ class Track {
       coverUrl: json['album']['cover_medium'],
     );
   }
+
+  factory Track.fromDocument(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+
+    return Track(
+      id: data['id'] ?? 0,
+      title: data['title'] ?? '',
+      artist: data['artist'] ?? '',
+      album: data['album'] ?? '',
+      coverUrl: data['coverUrl'] ?? '',
+    );
+  }
+
 }

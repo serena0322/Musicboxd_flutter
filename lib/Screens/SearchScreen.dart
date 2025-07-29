@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
-
-class Track {
-  final String title;
-
-  Track(this.title);
-}
+import '../Classes/Track.dart';
+import '../services/deezer_service.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({Key? key}) : super(key: key);
@@ -17,12 +13,6 @@ class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
 
-  List<Track> _allTracks = [
-    Track("Song A"),
-    Track("Song B"),
-    Track("Another Track"),
-    Track("Example"),
-  ]; // Simulazione dati
   List<Track> _filteredTracks = [];
 
   @override
@@ -31,17 +21,29 @@ class _SearchScreenState extends State<SearchScreen> {
     _filteredTracks = [];
   }
 
-  void _search(String query) {
-    final results = _allTracks
-        .where((track) => track.title.toLowerCase().contains(query.toLowerCase()))
-        .toList();
+  void _search(String query) async {
+    if (query.trim().isEmpty) {
+      setState(() {
+        _filteredTracks.clear();
+      });
+      return;
+    }
 
-    setState(() {
-      _filteredTracks = results;
-    });
-
-    // Nasconde la tastiera
-    _focusNode.unfocus();
+    try {
+      final results = await searchTracks(query);
+      setState(() {
+        _filteredTracks = results;
+      });
+      _focusNode.unfocus();
+    } catch (e) {
+      print("Errore durante la ricerca: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Errore nella ricerca"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -95,9 +97,19 @@ class _SearchScreenState extends State<SearchScreen> {
                     itemBuilder: (context, index) {
                       final track = _filteredTracks[index];
                       return ListTile(
+                        leading: Image.network(
+                          track.coverUrl,
+                          width: 48,
+                          height: 48,
+                          fit: BoxFit.cover,
+                        ),
                         title: Text(
                           track.title,
                           style: const TextStyle(color: Colors.white),
+                        ),
+                        subtitle: Text(
+                          track.artist,
+                          style: const TextStyle(color: Colors.white60),
                         ),
                         onTap: () {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -108,6 +120,7 @@ class _SearchScreenState extends State<SearchScreen> {
                           );
                         },
                       );
+
                     },
                   ),
                 ),

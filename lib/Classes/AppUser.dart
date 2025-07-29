@@ -9,6 +9,7 @@ class AppUser {
   final int followers;
   final int following;
   final Timestamp createdAt;
+  final dynamic like;
 
   const AppUser({
     required this.id,
@@ -19,6 +20,7 @@ class AppUser {
     required this.followers,
     required this.following,
     required this.createdAt,
+    required this.like,
   });
 
   // Factory constructor to create an instance from Firestore document
@@ -34,6 +36,7 @@ class AppUser {
       followers: (data['followers'] ?? 0) as int,
       following: (data['following'] ?? 0) as int,
       createdAt: data['createdAt'] ?? Timestamp.now(),
+      like: data['likes'] ?? '',
     );
   }
 
@@ -47,6 +50,7 @@ class AppUser {
       'followers': followers,
       'following': following,
       'createdAt': createdAt,
+      'likes': like,
     };
   }
 }

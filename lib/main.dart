@@ -1,8 +1,10 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:musicboxd_flutter/repositories/UserRepository.dart';
+import 'package:provider/provider.dart';
+import 'Classes/AuthWrapper.dart';
+import 'Classes/Track.dart';
 import 'Screens/ActivityScreen.dart';
 import 'Screens/AddSongBottomSheet.dart';
 import 'Screens/HomeScreen.dart';
@@ -10,18 +12,33 @@ import 'Screens/LoginScreen.dart';
 import 'Screens/NetworkScreen.dart';
 import 'Screens/PlaylistScreen.dart';
 import 'Screens/ProfileScreen.dart';
+import 'Screens/Review_Screen.dart';
 import 'Screens/SearchScreen.dart';
 import 'Screens/SettingsScreen.dart';
+import 'Screens/ShowReviews.dart';
 import 'Screens/SplashScreen.dart';
+import 'Viewmodel/profile_viewmodel.dart';
 import 'firebase_options.dart';
+import 'package:intl/date_symbol_data_local.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('it_IT', null);
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ProfileViewModel()),
+        // puoi aggiungere altri provider qui se necessario
+      ],
+      child: MyApp(),
+    ),
+  );
 }
+
 
 //verifica file trovati su Firestore
 void testFirestoreConnection() async {
@@ -43,23 +60,13 @@ class MyApp extends StatelessWidget {
           bodyMedium: TextStyle(color: Colors.white),
         ),
       ),
-      home: StreamBuilder<User?>( // controllo autenticazione
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return SplashScreen(duration: const Duration(seconds: 3), nextScreen: const HomeScreen());
-          } else if (snapshot.hasData) {
-            return const MainPage();
-          } else {
-            return LoginScreen();
-          }
-        },
-      ),
+      home: SplashScreen(duration: const Duration(seconds: 3), nextScreen: const AuthWrapper()),
       routes: {
         '/login': (context) => const LoginScreen(),
         '/settings': (context) => const SettingsScreen(),
         '/network': (context) => NetworkScreen(),
         '/playlist': (context) => const PlaylistScreen(),
+        '/showreviews': (context) => const ShowReviewsScreen(),
       },
     );
   }
@@ -81,7 +88,7 @@ class _MainPageState extends State<MainPage> {
   final List<Widget> _screens = [
     const HomeScreen(),
     const SearchScreen(),
-    const AddSongBottomSheet(),
+    Container(), // placeholder per il tab "Aggiungi"
     ActivityScreen(),
     const ProfileScreen(),
   ];
@@ -111,7 +118,27 @@ class _MainPageState extends State<MainPage> {
       body: _screens[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
+        onTap: (index) async {
+          if (index == 2) {
+            final selectedTrack = await showModalBottomSheet<Track>(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (_) => const AddSongBottomSheet(),
+            );
+
+            if (selectedTrack != null) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ReviewScreen(track: selectedTrack),
+                ),
+              );
+            }
+          } else {
+            setState(() => _currentIndex = index);
+          }
+        },
         type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.black,
         items: List.generate(5, (index) {

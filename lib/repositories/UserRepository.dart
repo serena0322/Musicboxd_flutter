@@ -19,6 +19,29 @@ class UserRepository {
     return null;
   }
 
+  Future<Map<String, int>> loadCounts() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return {'reviews': 0, 'playlists': 0};
+
+    final reviewsSnapshot = await FirebaseFirestore.instance
+        .collection('User')
+        .doc(uid)
+        .collection('Reviews')
+        .get();
+
+    final playlistSnapshot = await FirebaseFirestore.instance
+        .collection('User')
+        .doc(uid)
+        .collection('Playlists')
+        .get();
+
+    return {
+      'reviews': reviewsSnapshot.docs.length,
+      'playlists': playlistSnapshot.docs.length,
+    };
+  }
+
+
   /// Recupera le attività degli amici con messaggi formattati
   Future<List<ActivityItem>> loadFriendsActivities(List<String> followingIds) async {
     final String? uid = _auth.currentUser?.uid;
