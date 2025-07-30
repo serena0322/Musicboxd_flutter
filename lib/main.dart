@@ -15,7 +15,7 @@ import 'Screens/ProfileScreen.dart';
 import 'Screens/Review_Screen.dart';
 import 'Screens/SearchScreen.dart';
 import 'Screens/SettingsScreen.dart';
-import 'Screens/ShowReviews.dart';
+import 'Screens/ShowReviewsScreen.dart';
 import 'Screens/SplashScreen.dart';
 import 'Viewmodel/profile_viewmodel.dart';
 import 'firebase_options.dart';
@@ -66,7 +66,7 @@ class MyApp extends StatelessWidget {
         '/settings': (context) => const SettingsScreen(),
         '/network': (context) => NetworkScreen(),
         '/playlist': (context) => const PlaylistScreen(),
-        '/showreviews': (context) => const ShowReviewsScreen(),
+        '/reviews': (context) => const ShowReviewsScreen(),
       },
     );
   }

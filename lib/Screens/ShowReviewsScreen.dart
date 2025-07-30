@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../Classes/Review.dart';
+import '../Classes/ReviewItem.dart';
 
 class ShowReviewsScreen extends StatefulWidget {
   const ShowReviewsScreen({Key? key}) : super(key: key);
@@ -128,26 +129,9 @@ class _ShowReviewsScreenState extends State<ShowReviewsScreen> {
         itemCount: _reviewList.length,
         itemBuilder: (context, index) {
           final review = _reviewList[index];
-          final formattedDate = DateFormat("dd MMMM yyyy, HH:mm", "it_IT").format(review.timestamp.toDate());
-
-          return Card(
-            color: Colors.grey[900],
-            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            child: ListTile(
-              title: Text('${review.songTitle} - ${review.artistName}', style: const TextStyle(color: Colors.white)),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Valutazione: ${review.rating}', style: const TextStyle(color: Colors.white70)),
-                  Text('Recensione: ${review.reviewText}', style: const TextStyle(color: Colors.white70)),
-                  Text(formattedDate, style: const TextStyle(color: Colors.grey)),
-                ],
-              ),
-              trailing: IconButton(
-                icon: const Icon(Icons.delete, color: Colors.redAccent),
-                onPressed: () => _showDeleteDialog(review),
-              ),
-            ),
+          return ReviewItem(
+            review: review,
+            onLongPress: () => _showDeleteDialog(review),
           );
         },
       ),

@@ -81,12 +81,7 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _clickableItem(
-              'Reviews : ${viewModel.reviews}',
-              onTap: () {
-                Navigator.pushNamed(context, '/showreviews');
-              },
-            ),
+            _clickableItem('Reviews : ${viewModel.reviews}', routeName: '/reviews'),
             const SizedBox(height: 20),
             _clickableItem('Playlist : ${viewModel.playlists}', routeName: '/playlist'),
             const SizedBox(height: 20),

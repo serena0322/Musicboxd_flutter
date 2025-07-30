@@ -99,7 +99,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       'title': widget.track.title,
       'artist': widget.track.artist,
       'rating': _rating,
-      'cover': widget.track.coverUrl,
+      'cover': widget.track.album.cover,
     };
 
     final songRef = _firestore.collection('Songs').doc(widget.track.id.toString());
@@ -175,7 +175,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final coverUrl = widget.track.coverUrl;
+    final coverUrl = widget.track.album.cover;
 
     return WillPopScope(
       onWillPop: () async {
@@ -224,7 +224,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
               const SizedBox(height: 16),
               Text(widget.track.title,
                   style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
-              Text(widget.track.artist,
+              Text(widget.track.artist.name,
                   style: const TextStyle(fontSize: 16, color: Colors.white60)),
               const SizedBox(height: 12),
               Text(formattedDate, style: const TextStyle(color: Colors.grey)),

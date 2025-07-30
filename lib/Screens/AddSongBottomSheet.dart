@@ -109,7 +109,7 @@ class _AddSongBottomSheetState extends State<AddSongBottomSheet> {
                           leading: ClipRRect(
                             borderRadius: BorderRadius.circular(4),
                             child: Image.network(
-                              track.coverUrl,
+                              track.album.cover,
                               width: 48,
                               height: 48,
                               fit: BoxFit.cover,
@@ -124,7 +124,7 @@ class _AddSongBottomSheetState extends State<AddSongBottomSheet> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           subtitle: Text(
-                            track.artist,
+                            track.artist.name,
                             style: const TextStyle(
                               color: Colors.white60,
                               fontSize: 14,

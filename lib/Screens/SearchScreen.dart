@@ -98,7 +98,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       final track = _filteredTracks[index];
                       return ListTile(
                         leading: Image.network(
-                          track.coverUrl,
+                          track.album.cover,
                           width: 48,
                           height: 48,
                           fit: BoxFit.cover,
@@ -108,7 +108,7 @@ class _SearchScreenState extends State<SearchScreen> {
                           style: const TextStyle(color: Colors.white),
                         ),
                         subtitle: Text(
-                          track.artist,
+                          track.artist.name,
                           style: const TextStyle(color: Colors.white60),
                         ),
                         onTap: () {

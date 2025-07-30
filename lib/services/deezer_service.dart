@@ -1,6 +1,7 @@
 // lib/services/deezer_service.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../Classes/Album.dart';
 import '../Classes/Track.dart'; // se il modello è in un file separato
 
 Future<List<Track>> searchTracks(String query) async {
@@ -14,5 +15,17 @@ Future<List<Track>> searchTracks(String query) async {
     return data.map((item) => Track.fromJson(item)).toList();
   } else {
     throw Exception('Errore durante la ricerca: ${response.statusCode}');
+  }
+}
+
+Future<Album> getAlbumDetails(int albumId) async {
+  final url = Uri.parse('https://api.deezer.com/album/$albumId');
+  final response = await http.get(url);
+
+  if (response.statusCode == 200) {
+    final data = json.decode(response.body);
+    return Album.fromJson(data);
+  } else {
+    throw Exception('Errore nel recupero dettagli album');
   }
 }
