@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'package:audioplayers/audioplayers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -18,13 +17,11 @@ class TrackInfoScreen extends StatefulWidget {
 
 class _TrackInfoScreenState extends State<TrackInfoScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final AudioPlayer _audioPlayer = AudioPlayer();
-  bool isPlaying = false;
-  String genre = "N/A";
-  String releaseDate = "N/A";
   double? averageRating;
   Map<String, int> ratingsHistogram = {};
   bool histogramLoaded = false;
+  String genre = "N/A";
+  String releaseDate = "N/A";
 
   @override
   void initState() {
@@ -40,22 +37,23 @@ class _TrackInfoScreenState extends State<TrackInfoScreen> {
       final album = await getAlbumDetails(albumId);
       setState(() {
         releaseDate = _formatDate(album.releaseDate);
-        genre = (album.genres.isNotEmpty) ? album.genres.first : "N/A";
+        genre = album.genres.isNotEmpty ? album.genres.first : "N/A";
       });
-    } catch (e) {
-      debugPrint('Errore caricamento album: $e');
+    } catch (_) {
+      // gestione errore
     }
   }
 
   Future<void> _fetchHistogramAndRating() async {
-    final doc = await _firestore.collection('Songs').doc('track_${widget.track.id}').get();
+    final doc = await _firestore.collection('Songs').doc('${widget.track.id}').get();
     if (!doc.exists) return;
 
     final data = doc.data()!;
     final sum = (data['totalRatingSum'] ?? 0.0).toDouble();
     final count = (data['totalRatings'] ?? 0).toInt();
     final histogram = Map<String, dynamic>.from(data['ratingsHistogram'] ?? {});
-    final converted = histogram.map((key, value) => MapEntry(key, (value as num).toInt()));
+    final converted = histogram.map((key, value) =>
+        MapEntry(key, (value as num).toInt()));
 
     setState(() {
       averageRating = count > 0 ? sum / count : null;
@@ -80,35 +78,104 @@ class _TrackInfoScreenState extends State<TrackInfoScreen> {
     }
   }
 
-  void _togglePlayback() async {
-    if (!isPlaying && widget.track.preview != null) {
-      await _audioPlayer.play(UrlSource(widget.track.preview!));
-      setState(() => isPlaying = true);
-      _audioPlayer.onPlayerComplete.listen((_) {
-        setState(() => isPlaying = false);
-      });
-    } else {
-      await _audioPlayer.stop();
-      setState(() => isPlaying = false);
-    }
+  Future<List<Map<String, dynamic>>> _getUserPlaylists() async {
+    final snapshot = await _firestore
+        .collection('Playlists')
+        .where('owner',
+        isEqualTo: 'username') // TODO: sostituisci con lo username reale
+        .get();
+
+    return snapshot.docs.map((doc) =>
+    {
+      'id': doc.id,
+      'name': doc['name'],
+    }).toList();
   }
 
-  @override
-  void dispose() {
-    _audioPlayer.dispose();
-    super.dispose();
+  Future<void> _addTrackToPlaylist(String playlistId) async {
+    final playlistRef = _firestore.collection('Playlists').doc(playlistId);
+
+    await playlistRef.update({
+      'tracks': FieldValue.arrayUnion([widget.track.id])
+    });
+  }
+
+  void _addToPlaylist() async {
+    try {
+      final playlists = await _getUserPlaylists();
+
+      if (playlists.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Nessuna playlist trovata."),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      showDialog(
+        context: context,
+        builder: (ctx) =>
+            AlertDialog(
+              backgroundColor: Colors.black87,
+              title: const Text("Seleziona una playlist",
+                  style: TextStyle(color: Colors.white)),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: playlists.length,
+                  itemBuilder: (ctx, index) {
+                    final playlist = playlists[index];
+                    return ListTile(
+                      title: Text(playlist['name'],
+                          style: const TextStyle(color: Colors.white)),
+                      onTap: () async {
+                        Navigator.pop(ctx);
+                        await _addTrackToPlaylist(playlist['id']);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Brano aggiunto alla playlist"),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ),
+      );
+    } catch (e) {
+      debugPrint("Errore nel recupero playlist: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Errore durante l'aggiunta alla playlist"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Widget _buildHistogramBar(String key, double maxValue) {
     final count = ratingsHistogram[key]?.toDouble() ?? 0;
-    final height = max(6.0, sqrt(count) / sqrt(maxValue) * 72.0);
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 2),
-      width: 10,
-      height: height,
-      decoration: BoxDecoration(
-        color: Colors.greenAccent,
-        borderRadius: BorderRadius.circular(4),
+    final height = count == 0
+        ? 6.0
+        : (sqrt(count / maxValue) * 72.0).clamp(6.0, 72.0);
+
+    return SizedBox(
+      height: 72, // altezza fissa per tutte le colonne
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: Container(
+          width: 10,
+          height: height,
+          decoration: BoxDecoration(
+            color: Colors.greenAccent,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
       ),
     );
   }
@@ -123,12 +190,11 @@ class _TrackInfoScreenState extends State<TrackInfoScreen> {
         title: const Text("Dettagli Brano"),
         backgroundColor: Colors.black,
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // INFO BASE
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -143,78 +209,147 @@ class _TrackInfoScreenState extends State<TrackInfoScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(t.title ?? 'Titolo', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 6),
-                      Text(t.artist.name ?? 'Artista', style: const TextStyle(color: Colors.white70, fontStyle: FontStyle.italic)),
-                      const SizedBox(height: 6),
-                      Text("Album: ${t.album.title ?? 'N/A'}", style: const TextStyle(color: Colors.grey)),
-                      Text("Data uscita: $releaseDate", style: const TextStyle(color: Colors.grey)),
-                      Text("Genere: $genre", style: const TextStyle(color: Colors.grey)),
-                      Text("Durata: ${_formatDuration(t.duration)}", style: const TextStyle(color: Colors.grey)),
+                      Text(t.title,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'PoppinsBold')),
+                      const SizedBox(height: 7),
+                      Text(t.artist.name,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontStyle: FontStyle.italic,
+                              fontFamily: 'PoppinsMedium')),
+                      const SizedBox(height: 7),
+                      Text("Album: ${t.album.title}",
+                          style: const TextStyle(
+                              color: Color(0xFFCCCCCC),
+                              fontSize: 14,
+                              fontFamily: 'PoppinsRegular')),
+                      const SizedBox(height: 7),
+                      Text("Data uscita: $releaseDate",
+                          style: const TextStyle(
+                              color: Color(0xFFCCCCCC),
+                              fontSize: 14,
+                              fontFamily: 'PoppinsRegular')),
+                      const SizedBox(height: 7),
+                      Text("Genere: $genre",
+                          style: const TextStyle(
+                              color: Color(0xFFCCCCCC),
+                              fontSize: 14,
+                              fontFamily: 'PoppinsRegular')),
+                      const SizedBox(height: 7),
+                      Text("Durata: ${_formatDuration(t.duration)}",
+                          style: const TextStyle(
+                              color: Color(0xFFCCCCCC),
+                              fontSize: 14,
+                              fontFamily: 'PoppinsRegular')),
                     ],
                   ),
-                )
+                ),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
 
-            // PULSANTI
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                ElevatedButton(
-                  onPressed: _togglePlayback,
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, elevation: 0),
-                  child: Text(isPlaying ? "⏸ Stop" : "▶️ Anteprima", style: const TextStyle(color: Colors.greenAccent)),
-                ),
-                ElevatedButton(
+                TextButton(
                   onPressed: () {
-                    // TO DO: aggiunta a playlist
+                    // TODO: aggiungi logica riproduzione anteprima
                   },
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, elevation: 0),
-                  child: const Text("➕ Playlist", style: TextStyle(color: Colors.greenAccent)),
+                  child: const Text("Riproduci Anteprima",
+                      style: TextStyle(
+                          fontSize: 10,
+                          color: Color(0xFF11F54E),
+                          fontFamily: 'PoppinsMedium',
+                          letterSpacing: 0.02)),
+                ),
+                const Spacer(),
+                TextButton(
+                  onPressed: _addToPlaylist,
+                  child: const Text("Aggiungi alla Playlist",
+                      style: TextStyle(
+                          fontSize: 10,
+                          color: Color(0xFF11F54E),
+                          fontFamily: 'PoppinsMedium',
+                          letterSpacing: 0.02)),
                 ),
               ],
             ),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
+            const Text("RATINGS",
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'PoppinsBold',
+                    letterSpacing: 0.05)),
+            const SizedBox(height: 12),
 
-            // ISTOGRAMMA
-            const Text("RATINGS", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Text("★", style: TextStyle(color: Colors.greenAccent, fontSize: 18)),
-                const SizedBox(width: 4),
-                Text(averageRating?.toStringAsFixed(1) ?? "-", style: const TextStyle(color: Colors.white, fontSize: 18)),
-                const Spacer(),
-                const Text("★★★★★", style: TextStyle(color: Colors.greenAccent)),
-              ],
-            ),
-            const SizedBox(height: 12),
             if (histogramLoaded)
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: List.generate(10, (i) {
-                  final label = (0.5 + 0.5 * i).toStringAsFixed(1);
-                  final maxVal = ratingsHistogram.values
-                      .map((e) => e.toDouble())
-                      .fold<double>(1.0, (a, b) => a > b ? a : b);
-                  return Expanded(child: _buildHistogramBar(label, maxVal));
-                }),
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  const Text("★",
+                      style: TextStyle(
+                          color: Colors.greenAccent, fontSize: 14)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: List.generate(10, (i) {
+                        final label = (0.5 + 0.5 * i).toStringAsFixed(1);
+                        final maxVal = ratingsHistogram.values
+                            .map((e) => e.toDouble())
+                            .fold<double>(1.0, (a, b) => a > b ? a : b);
+                        return _buildHistogramBar(label, maxVal);
+                      }),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Column(
+                    children: [
+                      if (averageRating != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Text(
+                            averageRating!.toStringAsFixed(1),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      const Text("★★★★★",
+                          style: TextStyle(color: Colors.greenAccent, fontSize: 14)),
+                    ],
+                  ),
+                ],
               )
             else
-              const Center(child: CircularProgressIndicator(color: Colors.greenAccent)),
+              const Center(
+                  child: CircularProgressIndicator(
+                      color: Colors.greenAccent)),
 
             const SizedBox(height: 24),
-            const Text("Lyrics", style: TextStyle(color: Colors.white70)),
             const Text(
-              "Testo non disponibile in questa versione.",
-              style: TextStyle(color: Colors.white54, height: 1.4),
-            )
+              "Lyrics",
+              style: TextStyle(
+                color: Color(0xFFE0E0E0),
+                fontSize: 14,
+                fontFamily: 'PoppinsRegular',
+                height: 1.5,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
+
 }

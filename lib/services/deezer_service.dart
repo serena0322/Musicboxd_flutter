@@ -2,30 +2,48 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../Classes/Album.dart';
-import '../Classes/Track.dart'; // se il modello è in un file separato
+import '../Classes/Track.dart';
 
 Future<List<Track>> searchTracks(String query) async {
-  final url = Uri.parse('https://api.deezer.com/search?q=$query');
-  final response = await http.get(url);
+  final q = query.trim();
+  if (q.isEmpty) return [];
 
-  if (response.statusCode == 200) {
-    final json = jsonDecode(response.body);
-    final List<dynamic> data = json['data'];
+  final uri = Uri.https('api.deezer.com', '/search', {'q': q});
+  final res = await http.get(uri).timeout(const Duration(seconds: 12));
 
-    return data.map((item) => Track.fromJson(item)).toList();
-  } else {
-    throw Exception('Errore durante la ricerca: ${response.statusCode}');
+  if (res.statusCode != 200) {
+    throw Exception('Deezer ${res.statusCode}: ${res.body}');
   }
+
+  final decoded = json.decode(res.body);
+  final list = (decoded is Map && decoded['data'] is List)
+      ? decoded['data'] as List
+      : const [];
+
+  final tracks = <Track>[];
+  for (final e in list) {
+    try {
+      tracks.add(Track.fromJson((e as Map).cast<String, dynamic>()));
+    } catch (err, st) {
+      // Evita di rompere tutta la ricerca per un item malformato
+      // e lascia un log per capire quale campo manca
+      // (usa debugPrint per non intasare la console in release)
+      // ignore: avoid_print
+      print('Skip item malformato: $err\n$st');
+    }
+  }
+  return tracks;
 }
 
-Future<Album> getAlbumDetails(int albumId) async {
-  final url = Uri.parse('https://api.deezer.com/album/$albumId');
-  final response = await http.get(url);
 
-  if (response.statusCode == 200) {
-    final data = json.decode(response.body);
-    return Album.fromJson(data);
-  } else {
-    throw Exception('Errore nel recupero dettagli album');
+Future<Album> getAlbumDetails(int albumId) async {
+  final uri = Uri.https('api.deezer.com', '/album/$albumId');
+
+  final res = await http.get(uri).timeout(const Duration(seconds: 12));
+  if (res.statusCode != 200) {
+    throw Exception('Album ${res.statusCode}: ${res.body}');
   }
+
+  final decoded = json.decode(res.body);
+  return Album.fromJson(decoded as Map<String, dynamic>);
 }

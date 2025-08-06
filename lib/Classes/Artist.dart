@@ -1,11 +1,11 @@
-
+// Artist.dart
 class Artist {
-  final String id;
+  final int id;                 // <-- int, non String
   final String name;
-  final String genre;
-  final int? yearStarted;
-  final String bio;
-  final String? imageUrl;
+  final String genre;           // Deezer non lo fornisce: tienilo vuoto
+  final int? yearStarted;       // Deezer non lo fornisce
+  final String bio;             // Deezer non lo fornisce
+  final String? imageUrl;       // Deezer: picture / picture_*
 
   Artist({
     required this.id,
@@ -18,12 +18,15 @@ class Artist {
 
   factory Artist.fromJson(Map<String, dynamic> json) {
     return Artist(
-      id: json['id'] ?? '',
-      name: json['name'] ?? '',
-      genre: json['genre'] ?? '',
-      yearStarted: json['yearStarted'],
-      bio: json['bio'] ?? '',
-      imageUrl: json['imageUrl'],
+      id: (json['id'] as num?)?.toInt() ?? 0,       // <-- cast sicuro a int
+      name: (json['name'] ?? '').toString(),
+      genre: (json['genre'] ?? '').toString(),      // non presente in Deezer → ""
+      yearStarted: (json['yearStarted'] as num?)?.toInt(),
+      bio: (json['bio'] ?? '').toString(),          // non presente in Deezer → ""
+      imageUrl: (json['imageUrl'] ??
+          json['picture'] ??
+          json['picture_medium'] ??
+          json['picture_small'])?.toString(),
     );
   }
 

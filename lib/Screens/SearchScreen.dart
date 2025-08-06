@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../Classes/Track.dart';
 import '../services/deezer_service.dart';
+import 'TrackInfoScreen.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({Key? key}) : super(key: key);
@@ -35,11 +36,11 @@ class _SearchScreenState extends State<SearchScreen> {
         _filteredTracks = results;
       });
       _focusNode.unfocus();
-    } catch (e) {
-      print("Errore durante la ricerca: $e");
+    } catch (e, st) {
+      debugPrint('Errore ricerca: $e\n$st');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Errore nella ricerca"),
+          content: Text('Errore: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -112,15 +113,17 @@ class _SearchScreenState extends State<SearchScreen> {
                           style: const TextStyle(color: Colors.white60),
                         ),
                         onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text("Hai selezionato: ${track.title}"),
-                              backgroundColor: Colors.grey[900],
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => TrackInfoScreen(
+                                track: track,
+                                coverUrl: track.album.cover, // URL della cover
+                              ),
                             ),
                           );
                         },
                       );
-
                     },
                   ),
                 ),

@@ -19,15 +19,21 @@ dependencies:
   cached_network_image: ^3.3.1
   flutter_rating_bar: ^4.0.1
   path_provider: ^2.1.2
-  #just_audio: ^0.9.36
 
 dev_dependencies:
+  flutter_launcher_icons: ^0.13.1
   #flutter_native_splash: ^2.4.0
   flutter_test:
     sdk: flutter
   http: ^0.13.6
   flutter_lints: ^6.0.0
 
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/logo.png"
+  adaptive_icon_background: "#303C4A"
+  adaptive_icon_foreground: "assets/icon/logo.png"
 ##flutter_native_splash:
   ##color: "#000000"
   ##image: assets/images/logo.png
