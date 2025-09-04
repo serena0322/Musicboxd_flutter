@@ -4,7 +4,9 @@ import '../services/deezer_service.dart';
 import 'TrackInfoScreen.dart';
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({Key? key}) : super(key: key);
+  final String userId;
+
+  const SearchScreen({Key? key, required this.userId}) : super(key: key);
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -116,9 +118,10 @@ class _SearchScreenState extends State<SearchScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => TrackInfoScreen(
+                              builder: (context) => TrackInfoScreen(
                                 track: track,
-                                coverUrl: track.album.cover, // URL della cover
+                                coverUrl: track.album.cover,
+                                userId: widget.userId,
                               ),
                             ),
                           );

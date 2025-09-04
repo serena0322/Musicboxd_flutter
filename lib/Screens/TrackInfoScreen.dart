@@ -8,8 +8,14 @@ import '../services/deezer_service.dart';
 class TrackInfoScreen extends StatefulWidget {
   final Track track;
   final String coverUrl;
+  final String userId;
 
-  const TrackInfoScreen({Key? key, required this.track, required this.coverUrl}) : super(key: key);
+  const TrackInfoScreen({
+    Key? key,
+    required this.track,
+    required this.coverUrl,
+    required this.userId,
+  }) : super(key: key);
 
   @override
   State<TrackInfoScreen> createState() => _TrackInfoScreenState();
@@ -26,9 +32,11 @@ class _TrackInfoScreenState extends State<TrackInfoScreen> {
   @override
   void initState() {
     super.initState();
+    print("User ID ricevuto: ${widget.userId}");
     _fetchAlbumDetails();
     _fetchHistogramAndRating();
   }
+
 
   Future<void> _fetchAlbumDetails() async {
     final albumId = widget.track.album.id;
@@ -46,20 +54,41 @@ class _TrackInfoScreenState extends State<TrackInfoScreen> {
 
   Future<void> _fetchHistogramAndRating() async {
     final doc = await _firestore.collection('Songs').doc('${widget.track.id}').get();
-    if (!doc.exists) return;
+
+    if (!doc.exists) {
+      setState(() {
+        averageRating = null;
+        ratingsHistogram = _generateEmptyHistogram();
+        histogramLoaded = true;
+      });
+      return;
+    }
 
     final data = doc.data()!;
     final sum = (data['totalRatingSum'] ?? 0.0).toDouble();
     final count = (data['totalRatings'] ?? 0).toInt();
     final histogram = Map<String, dynamic>.from(data['ratingsHistogram'] ?? {});
-    final converted = histogram.map((key, value) =>
-        MapEntry(key, (value as num).toInt()));
+    final converted = histogram.map((key, value) => MapEntry(key, (value as num).toInt()));
+
+    // Riempie con zeri anche le chiavi mancanti
+    final completeHistogram = _generateEmptyHistogram();
+    converted.forEach((key, value) {
+      completeHistogram[key] = value;
+    });
 
     setState(() {
       averageRating = count > 0 ? sum / count : null;
-      ratingsHistogram = converted;
+      ratingsHistogram = completeHistogram;
       histogramLoaded = true;
     });
+  }
+
+  Map<String, int> _generateEmptyHistogram() {
+    return Map.fromIterable(
+      List.generate(10, (i) => (0.5 + 0.5 * i).toStringAsFixed(1)),
+      key: (k) => k,
+      value: (_) => 0,
+    );
   }
 
   String _formatDuration(int? seconds) {
@@ -80,20 +109,23 @@ class _TrackInfoScreenState extends State<TrackInfoScreen> {
 
   Future<List<Map<String, dynamic>>> _getUserPlaylists() async {
     final snapshot = await _firestore
+        .collection('User')
+        .doc(widget.userId)
         .collection('Playlists')
-        .where('owner',
-        isEqualTo: 'username') // TODO: sostituisci con lo username reale
         .get();
 
-    return snapshot.docs.map((doc) =>
-    {
+    return snapshot.docs.map((doc) => {
       'id': doc.id,
       'name': doc['name'],
     }).toList();
   }
 
   Future<void> _addTrackToPlaylist(String playlistId) async {
-    final playlistRef = _firestore.collection('Playlists').doc(playlistId);
+    final playlistRef = _firestore
+        .collection('User')
+        .doc(widget.userId)
+        .collection('Playlists')
+        .doc(playlistId);
 
     await playlistRef.update({
       'tracks': FieldValue.arrayUnion([widget.track.id])
@@ -159,18 +191,28 @@ class _TrackInfoScreenState extends State<TrackInfoScreen> {
   }
 
   Widget _buildHistogramBar(String key, double maxValue) {
-    final count = ratingsHistogram[key]?.toDouble() ?? 0;
-    final height = count == 0
-        ? 6.0
-        : (sqrt(count / maxValue) * 72.0).clamp(6.0, 72.0);
+    final count = ratingsHistogram[key]?.toDouble() ?? 0.0;
+
+    // Altezza minima visiva come in Kotlin
+    const double minVisibleHeight = 6.0;
+    // Normalizza come se ci fossero almeno 5 voti
+    final double normalizedMax = maxValue < 5 ? 5.0 : maxValue;
+
+    // Kotlin: ((sqrt(count) / sqrt(normalizedMax)) * 72).coerceAtLeast(minVisibleHeight)
+    final double targetHeight = count == 0
+        ? minVisibleHeight
+        : (sqrt(count) / sqrt(normalizedMax)) * 72.0;
+
+    final double clampedHeight =
+    targetHeight < minVisibleHeight ? minVisibleHeight : targetHeight;
 
     return SizedBox(
-      height: 72, // altezza fissa per tutte le colonne
+      height: 72, // altezza massima fissa
       child: Align(
         alignment: Alignment.bottomCenter,
         child: Container(
           width: 10,
-          height: height,
+          height: clampedHeight,
           decoration: BoxDecoration(
             color: Colors.greenAccent,
             borderRadius: BorderRadius.circular(4),
@@ -179,6 +221,7 @@ class _TrackInfoScreenState extends State<TrackInfoScreen> {
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -313,18 +356,19 @@ class _TrackInfoScreenState extends State<TrackInfoScreen> {
                   const SizedBox(width: 8),
                   Column(
                     children: [
-                      if (averageRating != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
-                          child: Text(
-                            averageRating!.toStringAsFixed(1),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
+                      // Mostra la media anche se è 0.0 oppure null
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          // Se `averageRating` è null o 0, mostra “0.0”
+                          (averageRating ?? 0.0).toStringAsFixed(1),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
+                      ),
                       const Text("★★★★★",
                           style: TextStyle(color: Colors.greenAccent, fontSize: 14)),
                     ],
