@@ -32,15 +32,12 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ProfileViewModel()),
-        // puoi aggiungere altri provider qui se necessario
       ],
       child: MyApp(),
     ),
   );
 }
 
-
-//verifica file trovati su Firestore
 void testFirestoreConnection() async {
   final snapshot = await FirebaseFirestore.instance.collection('test').get();
   print("Firestore test: ${snapshot.docs.length} documenti trovati");
@@ -87,8 +84,8 @@ class _MainPageState extends State<MainPage> {
 
   final List<Widget> _screens = [
     const HomeScreen(),
-    const SearchScreen(),
-    Container(), // placeholder per il tab "Aggiungi"
+    const SearchScreen(userId: '',),
+    Container(),
     ActivityScreen(),
     const ProfileScreen(),
   ];
@@ -178,7 +175,7 @@ class _MainPageState extends State<MainPage> {
         }),
         selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
         unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal),
-        selectedItemColor: Colors.transparent, // ignorato, ma necessario per evitare override
+        selectedItemColor: Colors.transparent,
         unselectedItemColor: Colors.grey,
       ),
     );
