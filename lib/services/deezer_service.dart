@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../Classes/Album.dart';
 import '../Classes/Track.dart';
@@ -34,16 +36,34 @@ Future<List<Track>> searchTracks(String query) async {
 }
 
 // --- TRACK DETAIL ---
-Future<Track> getTrack(int trackId) async {
-  final uri = Uri.https('api.deezer.com', '/track/$trackId');
-
-  final res = await http.get(uri).timeout(const Duration(seconds: 12));
-  if (res.statusCode != 200) {
-    throw Exception('Track ${res.statusCode}: ${res.body}');
+Future<Track> getTrackById(dynamic id, {Duration timeout = const Duration(seconds: 12)}) async {
+  final String trackId = id.toString().trim();
+  if (trackId.isEmpty) {
+    throw ArgumentError('trackId vuoto');
   }
 
-  final decoded = json.decode(res.body);
-  return Track.fromJson(decoded as Map<String, dynamic>);
+  final uri = Uri.https('api.deezer.com', '/track/$trackId');
+
+  try {
+    final res = await http.get(uri).timeout(timeout);
+
+    if (res.statusCode != 200) {
+      // Deezer ritorna 200 su success; su errore spesso 404/400 con JSON descrittivo
+      throw HttpException('Deezer $trackId -> ${res.statusCode}: ${res.body}');
+    }
+
+    final map = json.decode(res.body) as Map<String, dynamic>;
+    // Alcune risposte errore di Deezer arrivano come { "error": {...} } ma con 200 quasi mai sui /track
+    if (map.containsKey('error')) {
+      throw HttpException('Deezer error for $trackId: ${map['error']}');
+    }
+
+    return Track.fromJson(map);
+  } on TimeoutException {
+    throw TimeoutException('Timeout chiamando Deezer per track $trackId');
+  } on SocketException catch (e) {
+    throw SocketException('Rete non disponibile (track $trackId): ${e.message}');
+  }
 }
 
 // --- ALBUM DETAIL ---
