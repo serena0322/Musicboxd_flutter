@@ -13,15 +13,17 @@ const kBorder = Color(0x22FFFFFF);
 const kGradA  = Color(0xFFB5179E);
 const kGradB  = Color(0xFF00E5FF);
 
+
 class PlaylistDetailScreen extends StatefulWidget {
   final String playlistId;
-  final String? userId; // opzionale; se null usa l’utente autenticato
+  final String? userId;
 
   const PlaylistDetailScreen({
     Key? key,
     required this.playlistId,
     this.userId,
   }) : super(key: key);
+
 
   @override
   State<PlaylistDetailScreen> createState() => _PlaylistDetailScreenState();
@@ -47,53 +49,69 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
   Stream<List<_ItemVM>> _itemsStream() {
     if (_uid.isEmpty) return const Stream.empty();
 
-    // Ascolta il documento per leggere l’array `tracks`
-    return _playlistRef.snapshots().asyncExpand((docSnap) {
-      if (!docSnap.exists) return Stream.value(const <_ItemVM>[]);
+    return _playlistRef.snapshots().asyncExpand((plSnap) {
+      if (!plSnap.exists) return Stream.value(const <_ItemVM>[]);
 
-      final data = docSnap.data() as Map<String, dynamic>;
+      final data = plSnap.data() as Map<String, dynamic>;
       final trackIds = (data['tracks'] as List?)
           ?.map((e) => e.toString().trim())
           .where((e) => e.isNotEmpty)
           .toList() ?? const <String>[];
 
-      // Ascolta anche la subcollection Items
       final items$ = _playlistRef
           .collection('Items')
           .orderBy('addedAt', descending: true)
           .snapshots();
 
-      // Scegli dinamicamente la sorgente
       return items$.asyncMap((qs) async {
-        if (qs.docs.isNotEmpty) {
-          // Caso “nuovo”: abbiamo già gli Items
-          return qs.docs.map((d) => _ItemVM.fromDoc(d)).toList();
+        // 1) Items già presenti
+        final itemsFromDocs = qs.docs.map((d) => _ItemVM.fromDoc(d)).toList();
+        final presentIds = itemsFromDocs.map((e) => e.trackId).toSet();
+
+        // 2) Mancanti: presenti in tracks[] ma non in Items
+        final missingIds = trackIds.where((id) => !presentIds.contains(id)).toList();
+
+        List<_ItemVM> fromTracksFallback = const [];
+        if (missingIds.isNotEmpty) {
+          final tracks = await _fetchTracksByIds(missingIds); // helper sotto
+          fromTracksFallback = tracks.map((t) => _ItemVM.fromTrack(t)).toList();
         }
 
-        // Fallback: non ci sono Items → carico da Deezer gli ID in `tracks`
-        if (trackIds.isEmpty) return const <_ItemVM>[];
+        // 3) Merge (Items ∪ Fallback)
+        final merged = <String, _ItemVM>{
+          for (final it in itemsFromDocs) it.trackId: it,
+          for (final it in fromTracksFallback) it.trackId: it,
+        };
 
-        final tracks = await _fetchTracksByIds(trackIds);
-        return tracks.map((t) => _ItemVM.fromTrack(t)).toList();
+        // 4) Ordine: se c'è tracks[], rispetta quell'ordine; altrimenti usa addedAt desc (già nei docs)
+        if (trackIds.isNotEmpty) {
+          final ordered = <_ItemVM>[];
+          for (final id in trackIds) {
+            final it = merged[id];
+            if (it != null) ordered.add(it);
+          }
+          return ordered;
+        } else {
+          // Nessun array tracks: restituisci gli Items così come arrivano
+          return itemsFromDocs;
+        }
       });
     });
   }
 
+// Carica più brani in parallelo e in modo robusto (usa la tua getTrackById)
   Future<List<Track>> _fetchTracksByIds(List<String> ids, {int concurrency = 6}) async {
     if (ids.isEmpty) return const [];
     final out = List<Track?>.filled(ids.length, null, growable: false);
-
     for (int start = 0; start < ids.length; start += concurrency) {
       final end = (start + concurrency < ids.length) ? start + concurrency : ids.length;
       await Future.wait([
         for (int i = start; i < end; i++)
-          getTrackById(ids[i]).then((t) => out[i] = t).catchError((_) {/* skip id fallito */}),
+          getTrackById(ids[i]).then((t) => out[i] = t).catchError((_) {/* skip */}),
       ]);
     }
-
     return out.whereType<Track>().toList();
   }
-
 
   Future<void> _removeItem(_ItemVM item) async {
     if (_uid.isEmpty) return;
@@ -125,8 +143,6 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
   }
 
   Future<void> _ensureCoverAfterDeletion() async {
-    // Se la playlist ha cover vuota o la cover faceva riferimento all’item appena rimosso,
-    // scegli la cover del primo item rimasto, se esiste.
     await _db.runTransaction((tx) async {
       final snap = await tx.get(_playlistRef);
       if (!snap.exists) return;

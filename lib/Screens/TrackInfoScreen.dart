@@ -69,31 +69,29 @@ class _TrackInfoScreenState extends State<TrackInfoScreen> {
 
   // ===== Stream realtime delle playlist dell’utente =====
   Stream<List<Map<String, dynamic>>> _userPlaylistsStream() {
-    if (_uid.isEmpty) {
-      return const Stream<List<Map<String, dynamic>>>.empty();
-    }
+    if (_uid.isEmpty) return const Stream.empty();
     final coll = _firestore.collection('User').doc(_uid).collection('Playlists');
 
     return coll.snapshots().map((qs) {
       final list = qs.docs.map((d) {
         final data = d.data();
-        final name = (data['name'] is String) ? data['name'] as String : '(Senza nome)';
-        final tcRaw = data['trackCount'];
-        final trackCount = (tcRaw is num) ? tcRaw.toInt() : 0;
+        final name = (data['name'] as String?) ?? '(Senza nome)';
+        final trackCount = (data['trackCount'] is num) ? (data['trackCount'] as num).toInt() : 0;
+        final tracksLen  = (data['tracks'] is List) ? (data['tracks'] as List).length : 0;
         final updatedAtMs = (data['updatedAt'] is Timestamp)
             ? (data['updatedAt'] as Timestamp).millisecondsSinceEpoch
             : 0;
+
         return {
           'id': d.id,
           'name': name,
           'trackCount': trackCount,
+          'tracksLen': tracksLen,
           '_updatedAtMs': updatedAtMs,
         };
-      }).toList();
+      }).toList()
+        ..sort((a, b) => (b['_updatedAtMs'] as int).compareTo(a['_updatedAtMs'] as int));
 
-      // Ordina per updatedAt desc (i null in coda)
-      list.sort((a, b) =>
-          (b['_updatedAtMs'] as int).compareTo(a['_updatedAtMs'] as int));
       return list;
     });
   }
@@ -113,24 +111,22 @@ class _TrackInfoScreenState extends State<TrackInfoScreen> {
     return ref.id;
   }
 
-  // ===== Aggiungi brano con transazione (anti-duplicati) =====
   Future<void> _addTrackToPlaylistTx(String playlistId) async {
     if (_uid.isEmpty) throw Exception('Utente non autenticato.');
     final trackId = widget.track.id.toString();
-    final playlistRef =
-    _firestore.collection('User').doc(_uid).collection('Playlists').doc(playlistId);
-    final itemRef = playlistRef.collection('Items').doc(trackId);
+    final playlistRef = _firestore
+        .collection('User').doc(_uid)
+        .collection('Playlists').doc(playlistId);
 
     await _firestore.runTransaction((tx) async {
       final snap = await tx.get(playlistRef);
       if (!snap.exists) throw Exception('Playlist non trovata.');
-
       final data = snap.data() as Map<String, dynamic>;
-      final current = List<String>.from(
-        (data['tracks'] ?? const <String>[]).map((e) => e.toString()),
-      );
 
-      if (current.contains(trackId)) {
+      final List<dynamic> existing = (data['tracks'] as List?) ?? const [];
+      final hasAlready = existing.any((e) => e.toString() == trackId);
+
+      if (hasAlready) {
         tx.update(playlistRef, {'updatedAt': FieldValue.serverTimestamp()});
         return;
       }
@@ -140,15 +136,6 @@ class _TrackInfoScreenState extends State<TrackInfoScreen> {
         'trackCount': FieldValue.increment(1),
         'updatedAt': FieldValue.serverTimestamp(),
         'cover': widget.track.album.cover,
-      });
-
-      tx.set(itemRef, {
-        'trackId': trackId,
-        'title': widget.track.title,
-        'artist': widget.track.artist.name,
-        'cover': widget.track.album.cover,
-        'duration': widget.track.duration,
-        'addedAt': FieldValue.serverTimestamp(),
       });
     });
   }
@@ -188,22 +175,25 @@ class _TrackInfoScreenState extends State<TrackInfoScreen> {
                 Container(
                   width: 40, height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.white24, borderRadius: BorderRadius.circular(2),
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
                 const SizedBox(height: 14),
-                const Text('Aggiungi a playlist',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18)),
+                const Text(
+                  'Aggiungi a playlist',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18),
+                ),
                 const SizedBox(height: 12),
 
-                // Crea nuova
+                // --- CREA NUOVA PLAYLIST (campo + bottone con gradiente) ---
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
                     children: [
                       Expanded(
                         child: Container(
-                          height: 44,
+                          height: 46,
                           decoration: BoxDecoration(
                             color: Colors.white10,
                             borderRadius: BorderRadius.circular(12),
@@ -220,26 +210,51 @@ class _TrackInfoScreenState extends State<TrackInfoScreen> {
                               isCollapsed: true,
                             ),
                             textInputAction: TextInputAction.done,
+                            onSubmitted: (_) async {
+                              final name = nameCtrl.text.trim();
+                              if (name.isEmpty) return;
+                              final newId = await _createPlaylist(name);
+                              if (!context.mounted) return;
+                              Navigator.pop(ctx);
+                              await _addTrackToPlaylistTx(newId);
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Brano aggiunto a "$name"'),
+                                    backgroundColor: Colors.green),
+                              );
+                            },
                           ),
                         ),
                       ),
                       const SizedBox(width: 10),
-                      TextButton(
-                        onPressed: () async {
-                          final name = nameCtrl.text.trim();
-                          if (name.isEmpty) return;
-                          final newId = await _createPlaylist(name);
-                          if (!context.mounted) return;
-                          Navigator.pop(ctx);
-                          await _addTrackToPlaylistTx(newId);
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Brano aggiunto a "$name"'),
-                                backgroundColor: Colors.green),
-                          );
-                        },
-                        child: const Text('Crea',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(colors: [kGradA, kGradB]),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                          ),
+                          onPressed: () async {
+                            final name = nameCtrl.text.trim();
+                            if (name.isEmpty) return;
+                            final newId = await _createPlaylist(name);
+                            if (!context.mounted) return;
+                            Navigator.pop(ctx);
+                            await _addTrackToPlaylistTx(newId);
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Brano aggiunto a "$name"'),
+                                  backgroundColor: Colors.green),
+                            );
+                          },
+                          child: const Text('Crea',
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                        ),
                       ),
                     ],
                   ),
@@ -247,7 +262,7 @@ class _TrackInfoScreenState extends State<TrackInfoScreen> {
 
                 const SizedBox(height: 12),
 
-                // Elenco realtime
+                // --- ELENCO PLAYLIST (realtime) ---
                 Flexible(
                   child: StreamBuilder<List<Map<String, dynamic>>>(
                     stream: _userPlaylistsStream(),
@@ -259,6 +274,7 @@ class _TrackInfoScreenState extends State<TrackInfoScreen> {
                         );
                       }
                       final playlists = snap.data ?? const <Map<String, dynamic>>[];
+
                       if (playlists.isEmpty) {
                         return const Padding(
                           padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -276,9 +292,12 @@ class _TrackInfoScreenState extends State<TrackInfoScreen> {
                         separatorBuilder: (_, __) => const Divider(height: 1, color: kBorder),
                         itemBuilder: (_, i) {
                           final p = playlists[i];
-                          final count = (p['trackCount'] is num)
-                              ? (p['trackCount'] as num).toInt()
-                              : 0;
+                          final name = p['name'] as String;
+                          // conteggio corretto: prima tracks.length, poi fallback su trackCount
+                          final count = (p['tracksLen'] as int? ?? 0) > 0
+                              ? p['tracksLen'] as int
+                              : (p['trackCount'] as int? ?? 0);
+
                           return ListTile(
                             onTap: () async {
                               Navigator.pop(ctx);
@@ -286,14 +305,14 @@ class _TrackInfoScreenState extends State<TrackInfoScreen> {
                               if (!context.mounted) return;
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text('Aggiunto a "${p['name']}"'),
+                                  content: Text('Aggiunto a "$name"'),
                                   backgroundColor: Colors.green,
                                 ),
                               );
                             },
                             leading: const Icon(Icons.playlist_play_rounded, color: Colors.white70),
                             title: Text(
-                              p['name'] as String,
+                              name,
                               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                             ),
                             subtitle: Text('$count brani',

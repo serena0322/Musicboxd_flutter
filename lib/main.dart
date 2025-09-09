@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:musicboxd_flutter/Screens/ChangePasswordScreen.dart';
 import 'package:musicboxd_flutter/repositories/UserRepository.dart';
 import 'package:provider/provider.dart';
 import 'Classes/AuthWrapper.dart';
@@ -17,6 +18,7 @@ import 'Screens/SearchScreen.dart';
 import 'Screens/SettingsScreen.dart';
 import 'Screens/ShowReviewsScreen.dart';
 import 'Screens/SplashScreen.dart';
+import 'Screens/UserProfile.dart';
 import 'Viewmodel/profile_viewmodel.dart';
 import 'firebase_options.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -61,10 +63,17 @@ class MyApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginScreen(),
         '/settings': (context) => const SettingsScreen(),
-        '/network': (context) => NetworkScreen(),
+        '/network': (context) => const NetworkScreen(),
         '/playlist': (context) => const PlaylistScreen(),
         '/reviews': (context) => const ShowReviewsScreen(),
+        '/passwordAndAuthentication': (context) => const ChangePasswordScreen(),
+
+        '/userProfile': (context) {
+          final userId = ModalRoute.of(context)!.settings.arguments as String;
+          return UserProfile(userId: userId);
+        },
       },
+
     );
   }
 }

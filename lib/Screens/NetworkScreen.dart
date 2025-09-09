@@ -4,9 +4,18 @@ import 'package:flutter/material.dart';
 
 import '../Classes/AppUser.dart';
 
+// ====== PALETTE COERENTE ======
+const kBg     = Color(0xFF0E0F12);
+const kCard   = Color(0xFF151821);
+const kBorder = Color(0x22FFFFFF);
+const kGradA  = Color(0xFFB5179E);
+const kGradB  = Color(0xFF00E5FF);
+
 class NetworkScreen extends StatefulWidget {
+  const NetworkScreen({super.key});
+
   @override
-  _NetworkScreenState createState() => _NetworkScreenState();
+  State<NetworkScreen> createState() => _NetworkScreenState();
 }
 
 class _NetworkScreenState extends State<NetworkScreen>
@@ -25,9 +34,8 @@ class _NetworkScreenState extends State<NetworkScreen>
       if (_tabController.indexIsChanging) {
         _loadDataForTab(_tabController.index);
       }
+      setState(() {}); // per ricostruire la searchbar quando cambia tab
     });
-
-    // Carica inizialmente i dati per la prima tab (Search)
     _loadDataForTab(0);
   }
 
@@ -49,12 +57,8 @@ class _NetworkScreenState extends State<NetworkScreen>
 
     try {
       if (index == 0) {
-        // Tab Search: mostra lista vuota (o implementa ricerca)
-        setState(() {
-          _users = [];
-        });
+        setState(() => _users = []);
       } else if (index == 1) {
-        // Tab Followers
         if (currentUserId == null) return;
         final followersSnapshot = await firestore
             .collection('User')
@@ -62,12 +66,9 @@ class _NetworkScreenState extends State<NetworkScreen>
             .collection('followersList')
             .get();
 
-        final followerIds = followersSnapshot.docs.map((doc) => doc.id).toList();
-
+        final followerIds = followersSnapshot.docs.map((d) => d.id).toList();
         if (followerIds.isEmpty) {
-          setState(() {
-            _users = [];
-          });
+          setState(() => _users = []);
           return;
         }
 
@@ -77,12 +78,9 @@ class _NetworkScreenState extends State<NetworkScreen>
             .get();
 
         setState(() {
-          _users = usersQuery.docs
-              .map((doc) => AppUser.fromDocument(doc))
-              .toList();
+          _users = usersQuery.docs.map(AppUser.fromDocument).toList();
         });
       } else if (index == 2) {
-        // Tab Following
         if (currentUserId == null) return;
         final followingSnapshot = await firestore
             .collection('User')
@@ -90,12 +88,9 @@ class _NetworkScreenState extends State<NetworkScreen>
             .collection('followingList')
             .get();
 
-        final followingIds = followingSnapshot.docs.map((doc) => doc.id).toList();
-
+        final followingIds = followingSnapshot.docs.map((d) => d.id).toList();
         if (followingIds.isEmpty) {
-          setState(() {
-            _users = [];
-          });
+          setState(() => _users = []);
           return;
         }
 
@@ -105,34 +100,23 @@ class _NetworkScreenState extends State<NetworkScreen>
             .get();
 
         setState(() {
-          _users = usersQuery.docs
-              .map((doc) => AppUser.fromDocument(doc))
-              .toList();
+          _users = usersQuery.docs.map(AppUser.fromDocument).toList();
         });
       }
     } catch (e) {
-      print("Errore caricamento dati tab $index: $e");
-      setState(() {
-        _users = [];
-      });
+      debugPrint("Errore caricamento dati tab $index: $e");
+      setState(() => _users = []);
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _searchUsers(String query) async {
-    if (query.isEmpty) return;
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    final firestore = FirebaseFirestore.instance;
+    if (query.trim().isEmpty) return;
+    setState(() => _isLoading = true);
 
     try {
-      final snapshot = await firestore
+      final snapshot = await FirebaseFirestore.instance
           .collection('User')
           .orderBy('username')
           .startAt([query])
@@ -140,104 +124,239 @@ class _NetworkScreenState extends State<NetworkScreen>
           .get();
 
       setState(() {
-        _users =
-            snapshot.docs.map((doc) => AppUser.fromDocument(doc)).toList();
+        _users = snapshot.docs.map(AppUser.fromDocument).toList();
       });
     } catch (e) {
-      print("Errore ricerca utenti: $e");
+      debugPrint("Errore ricerca utenti: $e");
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   void _onUserTap(AppUser user) {
-    // Navigazione al profilo utente, passare user.id
     Navigator.of(context).pushNamed('/userProfile', arguments: user.id);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: kBg,
       appBar: AppBar(
-        title: const Text(
-          'Network',
-          style: TextStyle(
-            fontFamily: 'PoppinsBold',
-            fontWeight: FontWeight.bold,
-            fontSize: 30,
-            color: Colors.white,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        backgroundColor: Colors.black,
+        backgroundColor: kBg,
         centerTitle: true,
         elevation: 0,
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.blueAccent, // colore tab selezionata
-          tabs: const [
-            Tab(text: 'Search'),
-            Tab(text: 'Followers'),
-            Tab(text: 'Following'),
-          ],
+        title: ShaderMask(
+          shaderCallback: (bounds) => const LinearGradient(
+            colors: [kGradA, kGradB],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            stops: [0.0, 0.7],
+          ).createShader(bounds),
+          blendMode: BlendMode.srcIn,
+          child: const Text(
+            'Network',
+            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: 0.2),
+          ),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(52),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: _GradientTabBar(controller: _tabController),
+          ),
         ),
       ),
+
       body: Column(
         children: [
+          // Search bar solo nella tab 0
           if (_tabController.index == 0)
             Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Search by username',
-                  fillColor: Colors.grey[900],
-                  filled: true,
-                  prefixIcon: const Icon(Icons.search, color: Colors.white70),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide.none,
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+                clipBehavior: Clip.antiAlias,
+                child: Container(
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: Colors.white10,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: kBorder),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.search_rounded, color: Colors.white70),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: const InputDecoration(
+                            hintText: 'Cerca per username',
+                            hintStyle: TextStyle(color: Colors.white54),
+                            border: InputBorder.none,
+                            isCollapsed: true,
+                          ),
+                          textInputAction: TextInputAction.search,
+                          onSubmitted: (v) => _searchUsers(v.trim()),
+                        ),
+                      ),
+                      if (_searchController.text.isNotEmpty)
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded, color: Colors.white54),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _users = []);
+                          },
+                        ),
+                    ],
                   ),
                 ),
-                style: const TextStyle(color: Colors.white),
-                onSubmitted: (value) => _searchUsers(value.trim()),
               ),
             )
           else
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
 
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(child: CircularProgressIndicator(color: Colors.white))
                 : _users.isEmpty
-                ? Center(
-              child: Text(
-                'No users found',
-                style: TextStyle(color: Colors.grey[400]),
-              ),
-            )
-                : ListView.builder(
+                ? const _EmptyState()
+                : ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               itemCount: _users.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
                 final user = _users[index];
-                return ListTile(
-                  title: Text(
-                    user.username ?? 'No username',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                  subtitle: Text(
-                    '${user.firstName ?? ''} ${user.lastName ?? ''}',
-                    style: const TextStyle(color: Colors.grey),
-                  ),
+                return _UserTile(
+                  user: user,
                   onTap: () => _onUserTap(user),
                 );
               },
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+
+
+/// ---- UI widgets ----
+
+class _GradientTabBar extends StatelessWidget {
+  final TabController controller;
+  const _GradientTabBar({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 40,
+      decoration: BoxDecoration(
+        color: kCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: kBorder),
+      ),
+      child: TabBar(
+        controller: controller,
+        indicator: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          gradient: const LinearGradient(colors: [kGradA, kGradB]),
+        ),
+        indicatorSize: TabBarIndicatorSize.tab,
+        labelColor: Colors.white,
+        unselectedLabelColor: Colors.white70,
+        dividerColor: Colors.transparent,
+        tabs: const [
+          Tab(text: 'Search'),
+          Tab(text: 'Followers'),
+          Tab(text: 'Following'),
+        ],
+      ),
+    );
+  }
+}
+
+class _UserTile extends StatelessWidget {
+  final AppUser user;
+  final VoidCallback onTap;
+  const _UserTile({required this.user, required this.onTap});
+
+  String get _initial {
+    final s = (user.username ?? user.firstName ?? 'U').trim();
+    return s.isEmpty ? 'U' : s.characters.first.toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: kCard,
+      borderRadius: BorderRadius.circular(14),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Ink(
+          decoration: BoxDecoration(
+            border: Border.all(color: kBorder),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            leading: Container(
+              width: 48, height: 48,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [kGradA, kGradB]),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                _initial,
+                style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.w800, fontSize: 20,
+                ),
+              ),
+            ),
+            title: Text(
+              user.username ?? 'No username',
+              maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+            ),
+            subtitle: Text(
+              '${user.firstName ?? ''} ${user.lastName ?? ''}'.trim(),
+              maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white60),
+            ),
+            trailing: const Icon(Icons.chevron_right_rounded, color: Colors.white38),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 24),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: kCard,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: kBorder),
+        ),
+        child: const Text(
+          'No users found',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white70),
+        ),
       ),
     );
   }

@@ -488,7 +488,7 @@ class _PlaylistTile extends StatelessWidget {
                     final fb = fallbackCount;
 
                     // priorità: Items > 0 ? Items : fallback
-                    final count = (itemsCount > 0) ? itemsCount : (fb > 0 ? fb : 0);
+                    final count = (itemsCount > fb) ? itemsCount : fb; // usa il massimo
 
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

@@ -55,10 +55,10 @@ class _ReviewScreenState extends State<ReviewScreen> {
         .doc(user.uid)
         .collection('Reviews')
         .where('title', isEqualTo: widget.track.title)
-    // N.B. estetica soltanto: lasciamo la logica come fornita
-        .where('artist', isEqualTo: widget.track.artist)
+        .where('artist', isEqualTo: widget.track.artist.name) // << qui
         .limit(1)
         .get();
+
 
     if (query.docs.isNotEmpty) {
       final doc = query.docs.first;
@@ -105,10 +105,12 @@ class _ReviewScreenState extends State<ReviewScreen> {
       'timestamp': now,
       'textReview': _reviewController.text.trim(),
       'title': widget.track.title,
-      'artist': widget.track.artist,
+      'artist': widget.track.artist.name,
+      // 'artistId': widget.track.artist.id,
       'rating': _rating,
       'cover': widget.track.album.cover,
     };
+
 
     final songRef = _firestore.collection('Songs').doc(widget.track.id.toString());
 
@@ -118,16 +120,18 @@ class _ReviewScreenState extends State<ReviewScreen> {
       } else {
         await userDoc.collection('Reviews').add(reviewData);
         await userDoc.collection('Activity').add({
-          'action': 'Hai recensito "${widget.track.title}" di ${widget.track.artist}',
+          'action': 'Hai recensito "${widget.track.title}" di ${widget.track.artist.name}', // << qui
           'timestamp': now,
         });
+
         await userDoc.collection('ActivityForOthers').add({
           'actionType': 'review',
           'sourceUserId': uid,
           'songTitle': widget.track.title,
-          'artistName': widget.track.artist,
+          'artistName': widget.track.artist.name, // << qui
           'timestamp': now,
         });
+
 
         final songSnap = await songRef.get();
         if (!songSnap.exists) {
