@@ -758,25 +758,23 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.white54, size: 16),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Color(0xFFCCCCCC), fontSize: 14),
-            ),
-          ),
-        ],
+    return ListTile(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      horizontalTitleGap: 8,
+      minLeadingWidth: 20,
+      visualDensity: const VisualDensity(vertical: -3),
+      leading: Icon(icon, color: Colors.white54, size: 16),
+      title: Text(
+        text,
+        softWrap: true,
+        maxLines: null,
+        style: const TextStyle(color: Color(0xFFCCCCCC), fontSize: 14),
       ),
     );
   }
 }
+
 
 class _SectionHeader extends StatelessWidget {
   final String title;
