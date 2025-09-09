@@ -4,6 +4,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:audio_session/audio_session.dart';
+
 
 import '../Classes/Track.dart';
 import '../services/deezer_service.dart';
@@ -31,8 +34,18 @@ class TrackInfoScreen extends StatefulWidget {
   State<TrackInfoScreen> createState() => _TrackInfoScreenState();
 }
 
-class _TrackInfoScreenState extends State<TrackInfoScreen> {
+class _TrackInfoScreenState extends State<TrackInfoScreen>
+    with SingleTickerProviderStateMixin {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+
+  late final AudioPlayer _player;
+  bool _loadingPreview = false;
+  bool _isPlaying = false;
+  Duration _position = Duration.zero;
+  Duration _duration = Duration.zero;
+  String? _previewUrl;
+
 
   double? averageRating;
   Map<String, int> ratingsHistogram = {};
@@ -52,7 +65,116 @@ class _TrackInfoScreenState extends State<TrackInfoScreen> {
     super.initState();
     _fetchAlbumDetails();
     _fetchHistogramAndRating();
+    _setupPlayer();
+    _ensurePreviewAndPreload();
   }
+
+
+  Future<void> _setupPlayer() async {
+    _player = AudioPlayer();
+
+    final session = await AudioSession.instance;
+    await session.configure(const AudioSessionConfiguration.music());
+
+    _player.durationStream.listen((d) {
+      if (!mounted) return;
+      setState(() => _duration = d ?? Duration.zero);
+    });
+
+    _player.positionStream.listen((p) {
+      if (!mounted) return;
+      setState(() => _position = p);
+    });
+
+    _player.playerStateStream.listen((s) {
+      if (!mounted) return;
+
+      // se finisce, torna a 0 e ferma
+      if (s.processingState == ProcessingState.completed) {
+        _player.seek(Duration.zero);
+        _player.pause();
+      }
+
+      setState(() => _isPlaying = _player.playing);
+    });
+
+    _player.playbackEventStream.listen((_) {}, onError: (e, _) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Errore audio: $e')),
+      );
+    });
+  }
+
+
+
+  /// Risolve SEMPRE il preview dal dettaglio traccia e lo pre-carica nel player
+  Future<void> _ensurePreviewAndPreload() async {
+    setState(() => _loadingPreview = true);
+    try {
+      String? p = widget.track.preview;
+
+      // forza risoluzione dal dettaglio (più affidabile dei risultati di ricerca)
+      try {
+        final full = await getTrackById(widget.track.id.toString());
+        p = full.preview ?? p;
+      } catch (_) {}
+
+      if (!mounted) return;
+      _previewUrl = (p != null && p.isNotEmpty) ? p : null;
+
+      if (_previewUrl != null) {
+        await _player.setUrl(_previewUrl!); // PRELOAD qui
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Anteprima non disponibile: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _loadingPreview = false);
+    }
+  }
+
+  Future<void> _togglePreview() async {
+    if (_previewUrl == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Anteprima non disponibile per questo brano')),
+      );
+      return;
+    }
+
+    try {
+      // se la sorgente non c'è più, ricaricala
+      if (_player.audioSource == null) {
+        await _player.setUrl(_previewUrl!);
+      }
+
+      if (_player.playing) {
+        await _player.pause();
+      } else {
+        // se siamo a fine, riparti da 0
+        if (_duration > Duration.zero &&
+            _position >= _duration - const Duration(milliseconds: 200)) {
+          await _player.seek(Duration.zero);
+        }
+        await _player.play();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Errore riproduzione: $e')),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+
+
 
   Future<void> _fetchAlbumDetails() async {
     final albumId = widget.track.album.id;
@@ -520,11 +642,36 @@ class _TrackInfoScreenState extends State<TrackInfoScreen> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    onPressed: () {
-                      // TODO: logica riproduzione anteprima
-                    },
-                    icon: const Icon(Icons.play_arrow_rounded),
-                    label: const Text('Anteprima'),
+                    onPressed: (_loadingPreview || _previewUrl == null) ? null : _togglePreview,
+                    icon: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: _loadingPreview
+                          ? const CircularProgressIndicator(strokeWidth: 2)
+                          : Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          CircularProgressIndicator(
+                            strokeWidth: 2,
+                            value: (_duration.inMilliseconds > 0)
+                                ? (_position.inMilliseconds / _duration.inMilliseconds)
+                                .clamp(0.0, 1.0)
+                                : null, // null = indeterminato in buffering
+                          ),
+                          Icon(
+                            _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                            size: 16,
+                          ),
+                        ],
+                      ),
+                    ),
+                    label: Text(
+                      _loadingPreview
+                          ? 'Carico…'
+                          : (_previewUrl == null
+                          ? 'Anteprima non disponibile'
+                          : (_isPlaying ? 'Pausa' : 'Anteprima')),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),

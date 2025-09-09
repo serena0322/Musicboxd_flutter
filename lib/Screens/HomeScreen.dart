@@ -115,33 +115,39 @@ class _HomeScreenState extends State<HomeScreen>
     });
 
     try {
-      final futures = await Future.wait<List<Track>>([
-        globalCharts(),
-        searchTracks("pop"),
-        searchTracks("rock"),
-        searchTracks("hip hop"),
-        searchTracks("indie"),
-        searchTracks("electronic"),
-        searchTracks("italian"),
-        searchTracks("new"),
-      ].map((f) async {
-        try {
-          final list = await f;
-          return list.take(20).toList();
-        } catch (_) {
-          return <Track>[];
-        }
-      }));
+      // finestra di freschezza: 2 settimane (cambia in 3 se vuoi)
+      const int kRecentWeeks = 2;
+
+      final results = await Future.wait<List<Track>>([
+        // Classifica nazionale (con filtro novità)
+        countryCharts('IT', limit: 50, weeksBack: kRecentWeeks),
+
+        // Categorie per GENERE (accurate via chart Deezer) + esclusione parola nel titolo
+        genreTopRecentTracks('Pop',
+            weeksBack: kRecentWeeks, limit: 40, excludeWordsInTitle: ['pop']),
+        genreTopRecentTracks('Rock',
+            weeksBack: kRecentWeeks, limit: 40, excludeWordsInTitle: ['rock']),
+        genreTopRecentTracks('Hip Hop',
+            weeksBack: kRecentWeeks, limit: 40, excludeWordsInTitle: ['hip hop','hip-hop','rap']),
+        genreTopRecentTracks('Dance',
+            weeksBack: kRecentWeeks, limit: 40, excludeWordsInTitle: ['dance']),
+        genreTopRecentTracks('Electronic',
+            weeksBack: kRecentWeeks, limit: 40, excludeWordsInTitle: ['electronic','electro','dance']),
+        genreTopRecentTracks('Indie',
+            weeksBack: kRecentWeeks, limit: 40, excludeWordsInTitle: ['indie','alternative']),
+        genreTopRecentTracks('R&B',
+            weeksBack: kRecentWeeks, limit: 40, excludeWordsInTitle: ['r&b','soul']),
+      ]);
 
       final built = <TrackSection>[
-        TrackSection("Top Charts", futures[0]),
-        TrackSection("Pop Hits", futures[1]),
-        TrackSection("Rock Classics", futures[2]),
-        TrackSection("Hip-Hop Vibes", futures[3]),
-        TrackSection("Indie Discoveries", futures[4]),
-        TrackSection("Electronic Essentials", futures[5]),
-        TrackSection("Italian Favorites", futures[6]),
-        TrackSection("Fresh Finds", futures[7]),
+        TrackSection("Top 50 Italia", results[0]),
+        TrackSection("Pop",           results[1]),
+        TrackSection("Rock",          results[2]),
+        TrackSection("Hip-Hop",       results[3]),
+        TrackSection("Dance",         results[4]),
+        TrackSection("Electronic",    results[5]),
+        TrackSection("Indie/Alt",     results[6]),
+        TrackSection("R&B/Soul",      results[7]),
       ].where((s) => s.tracks.isNotEmpty).toList();
 
       setState(() {
