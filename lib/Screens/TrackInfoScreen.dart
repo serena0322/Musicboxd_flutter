@@ -108,13 +108,11 @@ class _TrackInfoScreenState extends State<TrackInfoScreen>
 
 
 
-  /// Risolve SEMPRE il preview dal dettaglio traccia e lo pre-carica nel player
   Future<void> _ensurePreviewAndPreload() async {
     setState(() => _loadingPreview = true);
     try {
       String? p = widget.track.preview;
 
-      // forza risoluzione dal dettaglio (più affidabile dei risultati di ricerca)
       try {
         final full = await getTrackById(widget.track.id.toString());
         p = full.preview ?? p;
@@ -124,7 +122,7 @@ class _TrackInfoScreenState extends State<TrackInfoScreen>
       _previewUrl = (p != null && p.isNotEmpty) ? p : null;
 
       if (_previewUrl != null) {
-        await _player.setUrl(_previewUrl!); // PRELOAD qui
+        await _player.setUrl(_previewUrl!);
       }
     } catch (e) {
       if (!mounted) return;
@@ -145,7 +143,6 @@ class _TrackInfoScreenState extends State<TrackInfoScreen>
     }
 
     try {
-      // se la sorgente non c'è più, ricaricala
       if (_player.audioSource == null) {
         await _player.setUrl(_previewUrl!);
       }
@@ -153,7 +150,6 @@ class _TrackInfoScreenState extends State<TrackInfoScreen>
       if (_player.playing) {
         await _player.pause();
       } else {
-        // se siamo a fine, riparti da 0
         if (_duration > Duration.zero &&
             _position >= _duration - const Duration(milliseconds: 200)) {
           await _player.seek(Duration.zero);
@@ -189,7 +185,6 @@ class _TrackInfoScreenState extends State<TrackInfoScreen>
     } catch (_) {}
   }
 
-  // ===== Stream realtime delle playlist dell’utente =====
   Stream<List<Map<String, dynamic>>> _userPlaylistsStream() {
     if (_uid.isEmpty) return const Stream.empty();
     final coll = _firestore.collection('User').doc(_uid).collection('Playlists');
@@ -218,7 +213,6 @@ class _TrackInfoScreenState extends State<TrackInfoScreen>
     });
   }
 
-  // ===== Crea playlist =====
   Future<String> _createPlaylist(String name) async {
     if (_uid.isEmpty) throw Exception('Utente non autenticato.');
     final ref = _firestore.collection('User').doc(_uid).collection('Playlists').doc();
@@ -262,7 +256,6 @@ class _TrackInfoScreenState extends State<TrackInfoScreen>
     });
   }
 
-  // ===== Bottom sheet: scegli playlist o creane una nuova =====
   void _openAddToPlaylistSheet() {
     if (_uid.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -308,7 +301,6 @@ class _TrackInfoScreenState extends State<TrackInfoScreen>
                 ),
                 const SizedBox(height: 12),
 
-                // --- CREA NUOVA PLAYLIST (campo + bottone con gradiente) ---
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
@@ -384,7 +376,6 @@ class _TrackInfoScreenState extends State<TrackInfoScreen>
 
                 const SizedBox(height: 12),
 
-                // --- ELENCO PLAYLIST (realtime) ---
                 Flexible(
                   child: StreamBuilder<List<Map<String, dynamic>>>(
                     stream: _userPlaylistsStream(),
@@ -415,7 +406,6 @@ class _TrackInfoScreenState extends State<TrackInfoScreen>
                         itemBuilder: (_, i) {
                           final p = playlists[i];
                           final name = p['name'] as String;
-                          // conteggio corretto: prima tracks.length, poi fallback su trackCount
                           final count = (p['tracksLen'] as int? ?? 0) > 0
                               ? p['tracksLen'] as int
                               : (p['trackCount'] as int? ?? 0);
@@ -454,7 +444,6 @@ class _TrackInfoScreenState extends State<TrackInfoScreen>
     );
   }
 
-  // ===== Ratings / formattazioni =====
 
   Future<void> _fetchHistogramAndRating() async {
     final doc = await _firestore.collection('Songs').doc('${widget.track.id}').get();
@@ -569,7 +558,6 @@ class _TrackInfoScreenState extends State<TrackInfoScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Card info brano
             Container(
               decoration: BoxDecoration(
                 color: kCard,
@@ -630,7 +618,6 @@ class _TrackInfoScreenState extends State<TrackInfoScreen>
 
             const SizedBox(height: 12),
 
-            // Azioni
             Row(
               children: [
                 Expanded(
@@ -656,7 +643,7 @@ class _TrackInfoScreenState extends State<TrackInfoScreen>
                             value: (_duration.inMilliseconds > 0)
                                 ? (_position.inMilliseconds / _duration.inMilliseconds)
                                 .clamp(0.0, 1.0)
-                                : null, // null = indeterminato in buffering
+                                : null,
                           ),
                           Icon(
                             _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
@@ -694,7 +681,6 @@ class _TrackInfoScreenState extends State<TrackInfoScreen>
 
             const SizedBox(height: 20),
 
-            // Ratings
             const _SectionHeader(title: "Ratings"),
             const SizedBox(height: 10),
             Container(
@@ -749,7 +735,6 @@ class _TrackInfoScreenState extends State<TrackInfoScreen>
   }
 }
 
-// ====== WIDGET DI SUPPORTO ======
 
 class _InfoRow extends StatelessWidget {
   final IconData icon;

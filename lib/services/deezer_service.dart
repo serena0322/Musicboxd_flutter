@@ -6,9 +6,6 @@ import 'package:http/http.dart' as http;
 import '../Classes/Album.dart';
 import '../Classes/Track.dart';
 
-/// ============================================================================
-/// BASE ORIGINALE (invariato)
-/// ============================================================================
 Future<List<Track>> searchTracks(String query) async {
   final q = query.trim();
   if (q.isEmpty) return [];
@@ -103,14 +100,9 @@ Future<List<Track>> globalCharts() async {
   return tracks;
 }
 
-/// ============================================================================
-/// AGGIUNTE: categorie accurate per GENERE + filtro “usciti da 2/3 settimane”
-/// ============================================================================
-
 const _host = 'api.deezer.com';
 const Duration _timeout = Duration(seconds: 12);
 
-/// Cache leggera: release date + generi dell’album (1 sola GET /album/{id})
 class _AlbumMeta {
   final DateTime? release;
   final List<String> genres;
@@ -153,8 +145,7 @@ bool _titleContainsAny(String title, List<String> words) {
   return words.any((w) => t.contains(w.toLowerCase()));
 }
 
-/// -------------------- /genre → id mapping --------------------
-final Map<String, int> _genreNameToId = {}; // nameLower → id
+final Map<String, int> _genreNameToId = {};
 
 Future<void> _ensureGenresLoaded() async {
   if (_genreNameToId.isNotEmpty) return;
@@ -181,7 +172,6 @@ Future<int?> _resolveGenreId(String name) async {
 
   if (_genreNameToId.containsKey(n)) return _genreNameToId[n];
 
-  // sinonimi comuni/minime tolleranze
   const synonyms = {
     'hip hop': ['hip-hop', 'rap', 'hip hop/rap'],
     'electronic': ['electro', 'edm'],
@@ -208,7 +198,6 @@ Future<int?> _resolveGenreId(String name) async {
   return null;
 }
 
-/// -------------------- /chart/{genreId}/tracks helper --------------------
 Future<List<Track>> _fetchGenreChart(int genreId, {int limit = 100}) async {
   final uri = Uri.https(_host, '/chart/$genreId/tracks', {'limit': '$limit'});
   final res = await http.get(uri).timeout(_timeout);
@@ -220,15 +209,14 @@ Future<List<Track>> _fetchGenreChart(int genreId, {int limit = 100}) async {
   return list.map((e) => Track.fromJson((e as Map).cast<String, dynamic>())).toList();
 }
 
-/// -------------------- filtro recenti (2/3 settimane) in BATCH --------------------
-/// Richiede meta album (release) in parallelo, limitando la concorrenza.
+
 Future<List<Track>> _filterRecentBatch(
     List<Track> seed, {
       required DateTime since,
       List<String> excludeWordsInTitle = const [],
       int take = 40,
-      int batchSize = 8,        // richieste /album in parallelo per batch
-      int maxAlbumLookups = 80, // tetto sicurezza
+      int batchSize = 8,
+      int maxAlbumLookups = 80,
     }) async {
   final out = <Track>[];
   final seen = <int>{};
@@ -247,7 +235,6 @@ Future<List<Track>> _filterRecentBatch(
       batch.add(() async {
         checked++;
         final meta = await _albumMeta(t.album.id);
-        // filtra per data (>= since)
         if (meta.release != null && meta.release!.isBefore(since)) return null;
         return t;
       }());
@@ -265,22 +252,15 @@ Future<List<Track>> _filterRecentBatch(
   return out;
 }
 
-/// =============================================================================
-/// API PUBBLICA: brani per GENERE (accurati) con filtro 2/3 settimane
-/// =============================================================================
-/// Esempi:
-///   await genreTopRecentTracks('Rock', weeksBack: 2, excludeWordsInTitle: ['rock']);
-///   await genreTopRecentTracks('Dance', weeksBack: 3);
 Future<List<Track>> genreTopRecentTracks(
     String genreName, {
-      int weeksBack = 3,                  // metti 2 per 2 settimane
+      int weeksBack = 3,
       int limit = 40,
       List<String> excludeWordsInTitle = const [],
     }) async {
   final gid = await _resolveGenreId(genreName);
   if (gid == null) return [];
 
-  // prendo più seed per avere materiale da filtrare
   final seed = await _fetchGenreChart(gid, limit: limit * 2);
 
   final since = _sinceWeeks(weeksBack);
@@ -291,7 +271,6 @@ Future<List<Track>> genreTopRecentTracks(
     excludeWordsInTitle: excludeWordsInTitle,
   );
 
-  // Se troppo pochi, rilasso a 6 settimane (fallback “soft”)
   if (filtered.length < (limit / 3).round()) {
     final relaxed = _sinceWeeks(6);
     filtered = await _filterRecentBatch(
@@ -305,18 +284,16 @@ Future<List<Track>> genreTopRecentTracks(
   return filtered;
 }
 
-// ================== COUNTRY (Top per Paese, recenti 2/3 settimane) ==================
 
 int _editorialIdForIso(String iso) {
-  // Estendi se ti servono altri paesi
   const map = {
-    'IT': 110, // Italia
+    'IT': 110,
     'US': 2,
     'FR': 16,
     'DE': 7,
     'GB': 6,
   };
-  return map[iso.toUpperCase()] ?? 0; // 0 => fallback globale
+  return map[iso.toUpperCase()] ?? 0;
 }
 
 Future<List<Track>> _fetchEditorialCharts(int editorialId, {int limit = 100}) async {
@@ -337,24 +314,20 @@ Future<List<Track>> _fetchEditorialCharts(int editorialId, {int limit = 100}) as
   return list.map((e) => Track.fromJson((e as Map).cast<String, dynamic>())).toList();
 }
 
-/// Top per paese (es. 'IT') con filtro "uscite nelle ultime N settimane".
 Future<List<Track>> countryCharts(
     String iso, {
       int limit = 50,
-      int weeksBack = 3, // metti 2 per 2 settimane
+      int weeksBack = 3,
     }) async {
   final editorialId = _editorialIdForIso(iso);
 
-  // prendo più seed così ho materiale da filtrare
   List<Track> seed;
   try {
     seed = await _fetchEditorialCharts(editorialId, limit: limit * 2);
   } catch (_) {
-    // fallback al globale
     seed = await globalCharts();
   }
 
-  // filtro recente riusando il batch helper (stesso di genreTopRecentTracks)
   final since = _sinceWeeks(weeksBack);
   var filtered = await _filterRecentBatch(
     seed,
@@ -365,7 +338,6 @@ Future<List<Track>> countryCharts(
     maxAlbumLookups: 80,
   );
 
-  // se troppo pochi (lista del paese “ferma”), rilasso a 6 settimane
   if (filtered.length < (limit / 3).round()) {
     filtered = await _filterRecentBatch(
       seed,
@@ -377,7 +349,6 @@ Future<List<Track>> countryCharts(
     );
   }
 
-  // ultima spiaggia: niente filtro
   return filtered.isNotEmpty ? filtered : seed.take(limit).toList();
 }
 

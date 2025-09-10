@@ -115,14 +115,11 @@ class _HomeScreenState extends State<HomeScreen>
     });
 
     try {
-      // finestra di freschezza: 2 settimane (cambia in 3 se vuoi)
       const int kRecentWeeks = 2;
 
       final results = await Future.wait<List<Track>>([
-        // Classifica nazionale (con filtro novità)
         countryCharts('IT', limit: 50, weeksBack: kRecentWeeks),
 
-        // Categorie per GENERE (accurate via chart Deezer) + esclusione parola nel titolo
         genreTopRecentTracks('Pop',
             weeksBack: kRecentWeeks, limit: 40, excludeWordsInTitle: ['pop']),
         genreTopRecentTracks('Rock',
@@ -156,7 +153,7 @@ class _HomeScreenState extends State<HomeScreen>
       });
     } catch (e) {
       setState(() {
-        _errorMessage = "Errore nel caricamento contenuti: $e";
+        _errorMessage = "Errore nel caricamento contenuti";
         _isLoading = false;
       });
     }
@@ -184,7 +181,6 @@ class _HomeScreenState extends State<HomeScreen>
         backgroundColor: _bg,
         elevation: 0,
         centerTitle: true,
-        // Titolo più grande degli altri screen
         title: ShaderMask(
           shaderCallback: (Rect b) => const LinearGradient(
             colors: [_gradA, _gradB],
@@ -224,7 +220,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // --- TAB: MUSIC ---
   Widget _buildMusicTab() {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator(color: Colors.white));
@@ -296,7 +291,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // --- TAB: REVIEWS ---
   Widget _buildReviewsTab() {
     return Container(
       color: _bg,
@@ -423,7 +417,7 @@ class _SectionHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          Container(height: 1, color: const Color(0x22FFFFFF)), // underline sottile
+          Container(height: 1, color: const Color(0x22FFFFFF)),
         ],
       ),
     );
