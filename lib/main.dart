@@ -1,57 +1,88 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:musicboxd_flutter/Screens/ChangePasswordScreen.dart';
-import 'package:musicboxd_flutter/repositories/UserRepository.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'Screens/SignInScreen.dart';
+import 'package:musicboxd_flutter/repositories/UserRepository.dart';
+import 'firebase_options.dart';
 import 'Classes/AuthWrapper.dart';
 import 'Classes/Track.dart';
 import 'Screens/ActivityScreen.dart';
 import 'Screens/AddSongBottomSheet.dart';
+import 'Screens/ChangePasswordScreen.dart';
 import 'Screens/HomeScreen.dart';
 import 'Screens/LoginScreen.dart';
 import 'Screens/NetworkScreen.dart';
 import 'Screens/PlaylistScreen.dart';
 import 'Screens/ProfileScreen.dart';
 import 'Screens/Review_Screen.dart';
-import 'Screens/SignInScreen.dart';
 import 'Screens/SearchScreen.dart';
 import 'Screens/SettingsScreen.dart';
 import 'Screens/ShowReviewsScreen.dart';
 import 'Screens/SplashScreen.dart';
 import 'Screens/UserProfile.dart';
 import 'Viewmodel/profile_viewmodel.dart';
-import 'firebase_options.dart';
-import 'package:intl/date_symbol_data_local.dart';
+import 'object/user_repository.dart' hide UserRepository;
 
+final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Localizzazione italiana
+  Intl.defaultLocale = 'it_IT';
   await initializeDateFormatting('it_IT', null);
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+
+  // Firebase
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Esegui un test Firestore solo in debug e dopo il primo frame
+  if (kDebugMode) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        final snap = await FirebaseFirestore.instance.collection('test').limit(1).get();
+        // ignore: avoid_print
+        print('Firestore test OK: ${snap.docs.length} documenti trovati');
+      } catch (e) {
+        // ignore: avoid_print
+        print('Firestore test FAILED: $e');
+      }
+    });
+  }
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ProfileViewModel()),
       ],
-      child: MyApp(),
+      child: const MyApp(),
     ),
   );
 }
 
-void testFirestoreConnection() async {
-  final snapshot = await FirebaseFirestore.instance.collection('test').get();
-  print("Firestore test: ${snapshot.docs.length} documenti trovati");
-}
-
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'Musicboxd',
       debugShowCheckedModeBanner: false,
+      locale: const Locale('it', 'IT'),
+      localizationsDelegates: [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('it', 'IT'),
+        Locale('en', 'US'),
+      ],
       theme: ThemeData(
         fontFamily: 'Poppins',
         brightness: Brightness.dark,
@@ -59,31 +90,66 @@ class MyApp extends StatelessWidget {
         textTheme: const TextTheme(
           bodyMedium: TextStyle(color: Colors.white),
         ),
+        // (facoltativo) Colori generali
+        colorScheme: const ColorScheme.dark(
+          primary: Colors.white,
+          secondary: Colors.white70,
+          surface: Colors.black,
+        ),
       ),
-      home: SplashScreen(duration: const Duration(seconds: 3), nextScreen: const AuthWrapper()),
+
+      // Splash -> AuthWrapper
+      home: const SplashScreen(
+        duration: Duration(seconds: 3),
+        nextScreen: AuthWrapper(),
+      ),
+
+      // Route statiche
       routes: {
         '/login': (context) => const LoginScreen(),
+        '/register': (context) => const SignInScreen(),
         '/settings': (context) => const SettingsScreen(),
         '/network': (context) => const NetworkScreen(),
         '/playlist': (context) => const PlaylistScreen(),
         '/reviews': (context) => const ShowReviewsScreen(),
-        '/register': (context) => const SignInScreen(),
         '/passwordAndAuthentication': (context) => const ChangePasswordScreen(),
-
-        '/userProfile': (context) {
-          final userId = ModalRoute.of(context)!.settings.arguments as String;
-          return UserProfile(userId: userId);
-        },
       },
 
+      // Route con argomenti (tipizzata e difensiva)
+      onGenerateRoute: (settings) {
+        if (settings.name == '/userProfile') {
+          final args = settings.arguments;
+          if (args is String && args.isNotEmpty) {
+            return MaterialPageRoute(
+              builder: (_) => UserProfile(userId: args),
+              settings: settings,
+            );
+          } else {
+            // fallback sicuro se gli argomenti mancano/sono invalidi
+            return MaterialPageRoute(
+              builder: (_) => const Scaffold(
+                body: Center(child: Text('Parametro mancante per /userProfile')),
+              ),
+              settings: settings,
+            );
+          }
+        }
+        return null; // lascia che passi a onUnknownRoute
+      },
+
+      // Fallback per route sconosciute
+      onUnknownRoute: (settings) => MaterialPageRoute(
+        builder: (_) => const Scaffold(
+          body: Center(child: Text('Pagina non trovata')),
+        ),
+      ),
     );
   }
 }
 
 class MainPage extends StatefulWidget {
   final String? destination;
-
-  const MainPage({Key? key, this.destination}) : super(key: key);
+  const MainPage({super.key, this.destination});
 
   @override
   State<MainPage> createState() => _MainPageState();
@@ -93,18 +159,18 @@ class _MainPageState extends State<MainPage> {
   int _currentIndex = 0;
   final UserRepository _userRepository = UserRepository();
 
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const SearchScreen(userId: '',),
-    Container(),
+  // ATTENZIONE: SearchScreen(userId: '') -> valuta di passare l'UID reale
+  final List<Widget> _screens = const [
+    HomeScreen(),
+    SearchScreen(userId: ''), // <-- considera di iniettarlo da AuthWrapper/Provider
+    SizedBox.shrink(),        // placeholder tab "Aggiungi"
     ActivityScreen(),
-    const ProfileScreen(),
+    ProfileScreen(),
   ];
 
   @override
   void initState() {
     super.initState();
-
     _loadUserData();
 
     const destinations = ['home', 'search', 'add', 'activity', 'profile'];
@@ -113,43 +179,44 @@ class _MainPageState extends State<MainPage> {
   }
 
   Future<void> _loadUserData() async {
-    final user = await _userRepository.loadMyBasicData();
-    if (user != null) {
-      print('Utente caricato: ${user.username}');
-      // esempio: UserViewModel().setUser(user);
+    try {
+      final user = await _userRepository.loadMyBasicData();
+      if (user != null) {
+        // ignore: avoid_print
+        print('Utente caricato: ${user.username}');
+      }
+    } catch (e) {
+      // ignore: avoid_print
+      print('Errore caricamento utente: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Adattività semplice
     final size = MediaQuery.of(context).size;
-    final textScale = MediaQuery.of(context).textScaler.clamp(
-        minScaleFactor: 0.9, maxScaleFactor: 1.2); // evita label troppo grandi
-    final isCompact = size.width < 360;
+    final textScale = MediaQuery.of(context)
+        .textScaler
+        .clamp(minScaleFactor: 0.9, maxScaleFactor: 1.2);
 
+    final isCompact = size.width < 360;
     final iconSize = isCompact ? 22.0 : 26.0;
     final selectedFontSize   = isCompact ? 10.0 : 12.0;
     final unselectedFontSize = isCompact ? 10.0 : 12.0;
 
     return Scaffold(
-      // Mantiene lo stato delle tab ed è più stabile su molti device
       body: IndexedStack(index: _currentIndex, children: _screens),
-
       bottomNavigationBar: SafeArea(
         top: false,
         left: false,
         right: false,
-        minimum: const EdgeInsets.only(bottom: 4), // piccola aria extra
+        minimum: const EdgeInsets.only(bottom: 4),
         child: MediaQuery(
-          // controlla l'effetto di grandi dimensioni font a livello di app
           data: MediaQuery.of(context).copyWith(textScaler: textScale),
           child: BottomNavigationBar(
             type: BottomNavigationBarType.fixed,
             backgroundColor: Colors.black,
             currentIndex: _currentIndex,
             onTap: _onTap,
-            // ✅ dimensioni adattive
             iconSize: iconSize,
             selectedFontSize: selectedFontSize,
             unselectedFontSize: unselectedFontSize,
@@ -180,18 +247,15 @@ class _MainPageState extends State<MainPage> {
         backgroundColor: Colors.transparent,
         builder: (_) => const AddSongBottomSheet(),
       );
+      if (!mounted) return;
 
       if (selectedTrack != null) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ReviewScreen(track: selectedTrack),
-          ),
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => ReviewScreen(track: selectedTrack)),
         );
       }
     } else {
       setState(() => _currentIndex = index);
     }
   }
-
 }

@@ -256,7 +256,7 @@ class _TrackInfoScreenState extends State<TrackInfoScreen>
     });
   }
 
-  void _openAddToPlaylistSheet() {
+  Future<void> _openAddToPlaylistSheet() async {
     if (_uid.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Utente non autenticato')),
@@ -270,6 +270,27 @@ class _TrackInfoScreenState extends State<TrackInfoScreen>
       return;
     }
 
+    // --- Pre-check: se l’utente non ha alcuna playlist, mostra l’AlertDialog di creazione ---
+    try {
+      final hasAny = (await _firestore
+          .collection('User').doc(_uid)
+          .collection('Playlists')
+          .limit(1)
+          .get())
+          .docs
+          .isNotEmpty;
+
+      if (!mounted) return;
+
+      if (!hasAny) {
+        await _promptCreateFirstPlaylistAndAdd();
+        return; // Niente bottom sheet in questo caso
+      }
+    } catch (_) {
+      // In caso di errore nel pre-check, continuiamo comunque ad aprire la bottom sheet.
+    }
+
+    // --- Esistono playlist: apri la bottom sheet (tuo codice invariato) ---
     showModalBottomSheet(
       context: context,
       backgroundColor: kCard,
@@ -472,6 +493,91 @@ class _TrackInfoScreenState extends State<TrackInfoScreen>
       histogramLoaded = true;
     });
   }
+
+  Future<void> _promptCreateFirstPlaylistAndAdd() async {
+    final TextEditingController ctrl = TextEditingController();
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: kCard,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text(
+            'Crea la tua prima playlist',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+          ),
+          content: TextField(
+            controller: ctrl,
+            autofocus: true,
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(
+              hintText: 'Nome playlist…',
+              hintStyle: TextStyle(color: Colors.white54),
+              enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: kBorder),
+              ),
+              focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: kGradB),
+              ),
+            ),
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => Navigator.of(ctx).pop('create'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop('cancel'),
+              child: const Text('Annulla', style: TextStyle(color: Colors.white70)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ).copyWith(
+                backgroundColor: WidgetStateProperty.all(Colors.transparent),
+                elevation: WidgetStateProperty.all(0),
+              ),
+              onPressed: () => Navigator.of(ctx).pop('create'),
+              child: ShaderMask(
+                shaderCallback: (bounds) => const LinearGradient(
+                  colors: [kGradA, kGradB],
+                ).createShader(bounds),
+                blendMode: BlendMode.srcIn,
+                child: const Text('Crea', style: TextStyle(fontWeight: FontWeight.w800)),
+              ),
+            ),
+          ],
+        );
+      },
+    ).then((result) async {
+      if (result != 'create') return;
+      final name = ctrl.text.trim();
+      if (name.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Inserisci un nome per la playlist')),
+        );
+        return;
+      }
+
+      try {
+        final newId = await _createPlaylist(name);
+        await _addTrackToPlaylistTx(newId);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Brano aggiunto a "$name"'), backgroundColor: Colors.green),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore: $e')),
+        );
+      }
+    });
+  }
+
 
   Map<String, int> _generateEmptyHistogram() => Map.fromIterable(
     List.generate(10, (i) => (0.5 + 0.5 * i).toStringAsFixed(1)),

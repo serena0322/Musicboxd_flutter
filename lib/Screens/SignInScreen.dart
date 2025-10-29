@@ -264,7 +264,7 @@ class _SignInScreenState extends State<SignInScreen> {
                             ),
                           )
                               : const Text(
-                            'Login', // <-- etichetta corretta per la schermata di accesso
+                            'SignIn', // <-- etichetta corretta per la schermata di accesso
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
