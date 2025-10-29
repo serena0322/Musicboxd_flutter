@@ -14,6 +14,7 @@ import 'Screens/NetworkScreen.dart';
 import 'Screens/PlaylistScreen.dart';
 import 'Screens/ProfileScreen.dart';
 import 'Screens/Review_Screen.dart';
+import 'Screens/SignInScreen.dart';
 import 'Screens/SearchScreen.dart';
 import 'Screens/SettingsScreen.dart';
 import 'Screens/ShowReviewsScreen.dart';
@@ -66,6 +67,7 @@ class MyApp extends StatelessWidget {
         '/network': (context) => const NetworkScreen(),
         '/playlist': (context) => const PlaylistScreen(),
         '/reviews': (context) => const ShowReviewsScreen(),
+        '/register': (context) => const SignInScreen(),
         '/passwordAndAuthentication': (context) => const ChangePasswordScreen(),
 
         '/userProfile': (context) {

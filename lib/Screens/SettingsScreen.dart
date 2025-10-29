@@ -129,24 +129,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _signOut() async {
     final ok = await _confirmDialog('Esci', 'Sei sicura di voler uscire?');
     if (ok != true) return;
-    await _auth.signOut();
-    if (!mounted) return;
-    Navigator.of(context).pushNamed('/login');
+
+    try {
+      await _auth.signOut();
+
+      if (!mounted) return;
+      // Svuota tutte le route e porta alla Login
+      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Errore durante il logout: $e")),
+      );
+    }
   }
 
+
   Future<void> _deleteAccount() async {
-    final ok = await _confirmDialog('Elimina account',
-        'Sei sicura di voler eliminare il tuo account? Questa operazione è irreversibile.');
+    final ok = await _confirmDialog(
+      'Elimina account',
+      'Sei sicura di voler eliminare il tuo account? Questa operazione è irreversibile.',
+    );
     if (ok != true) return;
 
     try {
-      await _userDocRef!.delete();
+      await _userDocRef?.delete();
       await _currentUser.delete();
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Account eliminato con successo')),
       );
-      Navigator.of(context).pushReplacementNamed('/login');
+
+      // Svuota tutte le route
+      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
