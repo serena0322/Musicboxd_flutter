@@ -21,19 +21,13 @@ class DefaultFirebaseOptions {
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for android - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return android;
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
         return macos;
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -76,6 +70,24 @@ class DefaultFirebaseOptions {
     androidClientId: '293689309038-95bjei5akvif8qpi20deud9qsthih1me.apps.googleusercontent.com',
     iosClientId: '293689309038-7qaovrsgopmmrnb54vi7jegir7j22hu1.apps.googleusercontent.com',
     iosBundleId: 'com.example.musicboxdFlutter',
+  );
+
+  static const FirebaseOptions android = FirebaseOptions(
+    apiKey: 'AIzaSyA3bdSxMhrUh8DxOTzPzPV-wP_aYGlKd5Q',
+    appId: '1:293689309038:android:e25b1c7f8d667940fef37f',
+    messagingSenderId: '293689309038',
+    projectId: 'musicboxd-e0c37',
+    storageBucket: 'musicboxd-e0c37.firebasestorage.app',
+  );
+
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyDG1lyNqjnYd2VRFrvZ4-YzamyXrhK7k3o',
+    appId: '1:293689309038:web:4b99fba4db4fba68fef37f',
+    messagingSenderId: '293689309038',
+    projectId: 'musicboxd-e0c37',
+    authDomain: 'musicboxd-e0c37.firebaseapp.com',
+    storageBucket: 'musicboxd-e0c37.firebasestorage.app',
+    measurementId: 'G-19JR42ECGF',
   );
 
 }

@@ -2,6 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CLIENT_ID</key>
+	<string>293689309038-7qaovrsgopmmrnb54vi7jegir7j22hu1.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.293689309038-7qaovrsgopmmrnb54vi7jegir7j22hu1</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>293689309038-95bjei5akvif8qpi20deud9qsthih1me.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
 	<string>AIzaSyDAWoyBncfLD5ILAXcykzNno7O1WLf1w1s</string>
 	<key>GCM_SENDER_ID</key>
@@ -26,20 +32,5 @@
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
 	<string>1:293689309038:ios:7932001c5bdaed24fef37f</string>
-    <key>CFBundleURLTypes</key>
-    <array>
-      <dict>
-      <key>CFBundleURLSchemes</key>
-      <array>
-        <string>fbAPP-ID</string>
-      </array>
-      </dict>
-    </array>
-    <key>FacebookAppID</key>
-    <string>APP-ID</string>
-    <key>FacebookClientToken</key>
-    <string>CLIENT-TOKEN</string>
-    <key>FacebookDisplayName</key>
-    <string>APP-NAME</string>
 </dict>
 </plist>

@@ -15,13 +15,21 @@ class ProfileViewModel with ChangeNotifier {
   Future<void> loadFullProfileData() async {
     if (isLoaded) return;
 
-    profileData = await _repository.loadMyBasicData();
-    final counts = await _repository.loadCounts();
+    try {
+      profileData = await _repository.loadMyBasicData();
+      final counts = await _repository.loadCounts();
 
-    reviews = counts['reviews'] ?? 0;
-    playlists = counts['playlists'] ?? 0;
+      reviews = counts['reviews'] ?? 0;
+      playlists = counts['playlists'] ?? 0;
 
-    isLoaded = true;
-    notifyListeners();
+      isLoaded = true;
+      notifyListeners();
+
+      print("Profilo caricato correttamente: ${profileData?.username}");
+    } catch (e, stack) {
+      print("Errore nel caricamento del profilo: $e");
+      print("Stacktrace: $stack");
+    }
   }
+
 }

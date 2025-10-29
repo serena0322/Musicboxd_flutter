@@ -8,6 +8,7 @@ class UserRepository {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   Future<AppUser?> loadMyBasicData() async {
+    print("Chiamata a loadMyBasicData()");
     final uid = _auth.currentUser?.uid;
     if (uid == null) return null;
 
@@ -20,6 +21,7 @@ class UserRepository {
   }
 
   Future<Map<String, int>> loadCounts() async {
+    print("Chiamata a loadCounts()");
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return {'reviews': 0, 'playlists': 0};
 
