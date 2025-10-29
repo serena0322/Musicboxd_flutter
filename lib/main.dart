@@ -122,73 +122,76 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Adattività semplice
+    final size = MediaQuery.of(context).size;
+    final textScale = MediaQuery.of(context).textScaler.clamp(
+        minScaleFactor: 0.9, maxScaleFactor: 1.2); // evita label troppo grandi
+    final isCompact = size.width < 360;
+
+    final iconSize = isCompact ? 22.0 : 26.0;
+    final selectedFontSize   = isCompact ? 10.0 : 12.0;
+    final unselectedFontSize = isCompact ? 10.0 : 12.0;
+
     return Scaffold(
-      body: _screens[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) async {
-          if (index == 2) {
-            final selectedTrack = await showModalBottomSheet<Track>(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (_) => const AddSongBottomSheet(),
-            );
+      // Mantiene lo stato delle tab ed è più stabile su molti device
+      body: IndexedStack(index: _currentIndex, children: _screens),
 
-            if (selectedTrack != null) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ReviewScreen(track: selectedTrack),
-                ),
-              );
-            }
-          } else {
-            setState(() => _currentIndex = index);
-          }
-        },
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.black,
-        items: List.generate(5, (index) {
-          final isSelected = _currentIndex == index;
-
-          final List<IconData> icons = [
-            Icons.home,
-            Icons.search,
-            Icons.add_box,
-            Icons.favorite,
-            Icons.person,
-          ];
-
-          final List<String> labels = [
-            'Home',
-            'Cerca',
-            'Aggiungi',
-            'Attività',
-            'Profilo',
-          ];
-
-          final List<Color> activeColors = [
-            Colors.purple,
-            Colors.purpleAccent,
-            Colors.pinkAccent,
-            Colors.teal,
-            Colors.tealAccent,
-          ];
-
-          return BottomNavigationBarItem(
-            icon: Icon(
-              icons[index],
-              color: isSelected ? activeColors[index] : Colors.grey,
-            ),
-            label: labels[index],
-          );
-        }),
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
-        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal),
-        selectedItemColor: Colors.transparent,
-        unselectedItemColor: Colors.grey,
+      bottomNavigationBar: SafeArea(
+        top: false,
+        left: false,
+        right: false,
+        minimum: const EdgeInsets.only(bottom: 4), // piccola aria extra
+        child: MediaQuery(
+          // controlla l'effetto di grandi dimensioni font a livello di app
+          data: MediaQuery.of(context).copyWith(textScaler: textScale),
+          child: BottomNavigationBar(
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: Colors.black,
+            currentIndex: _currentIndex,
+            onTap: _onTap,
+            // ✅ dimensioni adattive
+            iconSize: iconSize,
+            selectedFontSize: selectedFontSize,
+            unselectedFontSize: unselectedFontSize,
+            showUnselectedLabels: true,
+            selectedItemColor: Colors.white,
+            unselectedItemColor: Colors.white60,
+            selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
+            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w400),
+            items: const [
+              BottomNavigationBarItem(icon: Icon(Icons.home),     label: 'Home'),
+              BottomNavigationBarItem(icon: Icon(Icons.search),   label: 'Cerca'),
+              BottomNavigationBarItem(icon: Icon(Icons.add_box),  label: 'Aggiungi'),
+              BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Attività'),
+              BottomNavigationBarItem(icon: Icon(Icons.person),   label: 'Profilo'),
+            ],
+          ),
+        ),
       ),
     );
   }
+
+  Future<void> _onTap(int index) async {
+    if (index == 2) {
+      final selectedTrack = await showModalBottomSheet<Track>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => const AddSongBottomSheet(),
+      );
+
+      if (selectedTrack != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ReviewScreen(track: selectedTrack),
+          ),
+        );
+      }
+    } else {
+      setState(() => _currentIndex = index);
+    }
+  }
+
 }
